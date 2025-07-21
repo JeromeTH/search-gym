@@ -1,5 +1,5 @@
 import unittest
-from src.core.data import DataLoader
+from src.core.dataset import Dataset
 from src.core.document import Document
 
 class TestDataLoaders(unittest.TestCase):
@@ -13,7 +13,7 @@ class TestDataLoaders(unittest.TestCase):
         self._test_dataloader_runs("litsearch")
 
     def _test_dataloader_runs(self, dataset_name: str):
-        dataloader = DataLoader.from_default(dataset_name)
+        dataloader = Dataset.from_default(dataset_name)
         count = 0
 
         for batch in dataloader.load():

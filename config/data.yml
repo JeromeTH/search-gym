@@ -1,11 +1,11 @@
 arxiv: 
-  path: /home/jth264/.cache/kagglehub/datasets/Cornell-University/arxiv/versions/235/arxiv-metadata-oai-snapshot.json
+  root: /home/jth264/.cache/kagglehub/datasets/Cornell-University/arxiv/versions/235/arxiv-metadata-oai-snapshot.json
   
 ncl: 
-  path: /home/share/data/ncl_json_one_year
+  root: /home/share/data/ncl_json_one_year
 
 history: 
-  path: data/history
+  root: data/history
 
 root: 
-  path: /home/share/data
+  root: /home/share/data

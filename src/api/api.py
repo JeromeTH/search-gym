@@ -14,7 +14,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(
 from src.run.adaptor import AppFactory
 from src.core.app import App
 from src.core.document import Document
-from src.core.filter import Filter
 from src.utils.metrics import MetricsTracker
 
 # === Enums ===

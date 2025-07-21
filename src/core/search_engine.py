@@ -1,12 +1,12 @@
-from typing import List, Optional, Dict, Type, Tuple
-from src.core.document import Document, FieldType
-from src.core.filter import Filter
+from typing import List, Optional, Dict, Type, Tuple, Union, Any
+from src.core.document import Document, EntryType
 from src.core.embedder import BaseEmbedder, SparseEmbedder, DenseEmbedder
 from src.core.collection import FieldConfig, IndexConfig, CollectionConfig, CollectionOperator, CollectionBuilder
 from src.core.elastic import ElasticIndexBuilder, ElasticIndexConfig
 from src.core.vector_set import BaseVectorSet
-from src.core.schema import SearchEngineConfig, MilvusConfig, HybridMilvusConfig, ElasticSearchConfig, SequentialConfig
+from src.core.schema import SearchEngineConfig, MilvusConfig, HybridMilvusConfig, ElasticSearchConfig, SequentialConfig, DatasetConfig
 from src.core.util import get 
+from functools import reduce
 from typing import List
 from pymilvus import (
     DataType,
@@ -14,11 +14,13 @@ from pymilvus import (
 )
 from pymilvus.client.abstract import Hits, Hit
 from elasticsearch import Elasticsearch
+from elasticsearch.helpers import bulk
 from pydantic import BaseModel
 import yaml
 import logging
 from scipy.sparse import csr_array, vstack
 from src.core.util import coalesce
+from abc import ABC, abstractmethod
 
 logger = logging.getLogger('taihu')
 model_config = yaml.safe_load(open("config/model.yml", "r"))
@@ -30,25 +32,28 @@ class SearchSpec(BaseModel):
     optimal_for: Optional[str] = None # e.g., "strong", "weak" filters 
     
 
-class SearchEngine: 
+class SearchEngine(ABC): 
     '''
     Highest level class that inserts documents and retrieves answers based on natural language queries and metadata filters. 
     '''
+    @abstractmethod
     def setup(self) -> None:
         """
         Sets up the database connection and initializes necessary components.
         This method should be called before any other operations.
         """
-        raise NotImplementedError("This method should be overridden by subclasses.")
-    
+        pass
+
+    @abstractmethod    
     def insert(self, docs: List[Document]) -> None:
         """
         Inserts a list of documents into the database.
         :param docs: A list of Document objects to be inserted.
         """
-        raise NotImplementedError("This method should be overridden by subclasses.")
-    
-    def search(self, query: str, filter: Filter, limit: Optional[int]) -> List[str]:
+        pass 
+
+    @abstractmethod
+    def search(self, query: str, filter: Dict[str, List[str]], limit: Optional[int]) -> List[str]:
         """
         Searches for documents based on a natural language query and optional metadata filters.
         :param query: The natural language query to search for.
@@ -56,7 +61,15 @@ class SearchEngine:
         :param limit: The maximum number of documents to return.
         :return: A list of document IDs that match the search criteria.
         """
-        raise NotImplementedError("This method should be overridden by subclasses.")
+        pass
+
+    @abstractmethod    
+    def config(self) -> SearchEngineConfig:
+        """
+        Returns the configuration of the search engine.
+        :return: An instance of SearchEngineConfig containing the search engine parameters.
+        """
+        pass
     
     @classmethod
     def from_config(cls, config: SearchEngineConfig) -> 'SearchEngine':
@@ -76,17 +89,17 @@ class SearchEngine:
         else:
             raise ValueError(f"Unknown search engine type: {config.type}. Supported types: 'milvus', 'hybrid_milvus', 'elastic_search', 'sequential'.")
         
+    @abstractmethod
     def spec(self) -> SearchSpec: 
-        raise NotImplementedError("This method should be overridden by subclasses.")
-
+        pass
 class Sequential(SearchEngine):
     """
     A compositional search engine where each engine refines the result of the previous.
     The first engine runs unconstrained; all others receive a filtered ID set.
     """
-    def __init__(self, engines: List[SearchEngine]):
-        assert len(engines) >= 2, "SequentialSearchEngine needs at least two engines"
-        self.engines = engines
+    def __init__(self, config: SequentialConfig):
+        self.engine_config = config
+        self.engines: List[SearchEngine] = [SearchEngine.from_config(engine_cfg) for engine_cfg in config.engines]
 
     @classmethod
     def from_config(cls, config: SequentialConfig) -> 'Sequential':
@@ -106,89 +119,135 @@ class Sequential(SearchEngine):
         for engine in self.engines:
             engine.insert(docs)
 
-    def search(self, query: str, filter: Filter, limit: int = 10) -> List[str]:
+    def search(self, query: str, filter: Dict[str, List[str]], limit: int = 10) -> List[str]:
         current_filter = filter
         for i, engine in enumerate(self.engines):
-            results = engine.search(query, current_filter, limit=limit)
+            subset_ids = engine.search(query, current_filter, limit=limit)
             # Feed filtered results to the next stage
             if i < len(self.engines) - 1:
-                current_filter = filter.model_copy(update={"ids": results})
-        return results
+                assert "id" in current_filter, "Sequential search requires 'id' in filter for subsequent engines"
+                current_filter = current_filter.update({"id": subset_ids})
+        return subset_ids
     
+    def config(self) -> SearchEngineConfig:
+        """
+        Returns the configuration of the sequential search engine.
+        :return: An instance of SearchEngineConfig containing the sequential search engine parameters.
+        """
+        return self.engine_config.model_copy()
 
     def spec(self) -> SearchSpec:
         names = " → ".join(e.spec().name for e in self.engines)
         return SearchSpec(name=f"sequential({names})", optimal_for="cascaded")
 
-
-class HybridMilvusSearchEngine(SearchEngine):
-    document_cls: Type[Document]
-    filter_cls: Type[Filter]
-
-    def __init__(
-        self,
-        dense_vector_set: BaseVectorSet, 
-        sparse_vector_set: BaseVectorSet, 
-        alpha = 0.5, 
-        force_rebuild: bool = False,
-    ):
-        dataset = dense_vector_set.config() 
-        self.document_cls = Document.from_dataset(dataset)
-        self.filter_cls = Filter.from_dataset(dataset)
-        self.dense_vector_set = dense_vector_set
-        self.sparse_vector_set = sparse_vector_set
-        self.alpha = alpha
-        self.force_rebuild = force_rebuild
-        assert self.dense_vector_set.config().embedder.embedding_type == "dense", \
-            "Dense vector set must use a dense embedder"
-        assert self.sparse_vector_set.config().embedder.embedding_type == "sparse", \
-            "Sparse vector set must use a sparse embedder"
-        
-        self.dense_embedder: DenseEmbedder = BaseEmbedder.from_config(self.dense_vector_set.config().embedder)
-        self.sparse_embedder: SparseEmbedder = BaseEmbedder.from_config(self.sparse_vector_set.config().embedder)
-
-        assert self.dense_vector_set.config().dataset == self.sparse_vector_set.config().dataset, \
-            "Dense and sparse vector managers must have the same dataset"
-
-        assert self.dense_vector_set.config().channel == self.sparse_vector_set.config().channel, \
-            "Dense and sparse vector managers must have the same channel"
-        
-        assert self.dense_vector_set.config().chunker == self.sparse_vector_set.config().chunker, \
-            "Dense and sparse vector managers must have the same chunker metadata"
-
+class BaseMilvus(ABC):
+    def _get_metadata_fields(self, dataset: DatasetConfig) -> List[FieldConfig]:
         fields = [
             FieldConfig(name="pk", dtype=DataType.VARCHAR, is_primary=True, max_length=100)
         ]
+        for f in dataset.filters:
+            if f.filter_type == "filter":
+                entry = dataset.get_entry(f.name)
+                fields.append(FieldConfig(
+                    name=entry.name,
+                    dtype=entry.type.to_milvus_type(),
+                    max_length=entry.max_length
+                ))
+        return fields
 
-        vs_config = dense_vector_set.config()
-        dense_model = vs_config.embedder.model_name
-        sparse_model = sparse_vector_set.config().embedder.model_name
-        dataset = vs_config.dataset
-        channel = vs_config.channel
+    def _get_query_expr(self, dataset: DatasetConfig, filter: Dict[str, List[str]]) -> Optional[str]:
+        clauses = []
+        logger.debug("milvus does not support must fields, only filter fields")
+        for key, values in filter.items():
+            f = dataset.get_filter(key)
+            if f.filter_type != "filter":
+                logger.warning(f"Filter {key} is not a filter type, skipping")
+                continue
+            field_type = dataset.get_entry(f.name).type
+            if field_type in {EntryType.STRING, EntryType.BOOLEAN}:
+                formatted = ",".join(f'"{v}"' for v in values)
+            else:
+                formatted = ",".join(f"{v}" for v in values)
+            clauses.append(f"{key} in [{formatted}]")
+        return " and ".join(clauses) if clauses else None
 
+    def _group_chunk_ids(self, chunk_ids: List[str]) -> List[str]:
+        return list({cid.split("-")[0] for cid in chunk_ids})
+
+    def build_metadata_dict(
+        docs: List[Document],
+        dataset: DatasetConfig,
+        chunk_sizes: Dict[str, int]
+    ) -> Dict[str, List[Any]]:
+        """
+        Build a metadata dictionary for insert based on dataset filters and chunk counts.
+
+        Args:
+            docs: List of documents to insert.
+            dataset: DatasetConfig object describing filters and field types.
+            chunk_sizes: Dict mapping doc_id to number of chunks (used to repeat metadata values).
+
+        Returns:
+            Dict[str, List[Any]] suitable for Milvus insert.
+        """
+        metadata_dict: Dict[str, List[Any]] = {}
+
+        for f in dataset.filters:
+            if f.filter_type != "filter":
+                continue
+
+            values = []
+            for doc in docs:
+                doc_id = doc.key()
+                repeat = chunk_sizes[doc_id]
+                val = coalesce(
+                    get(doc.metadata()[f.name].contents, 0),
+                    doc.metadata()[f.name].meta.type.default_value()
+                )
+                values.extend([val] * repeat)
+
+            metadata_dict[f.name] = values
+
+        return metadata_dict
+
+
+
+
+class HybridMilvusSearchEngine(BaseMilvus, SearchEngine):
+    def __init__(
+        self,
+        config: HybridMilvusConfig,
+        alpha = 0.5, 
+        force_rebuild: bool = False,
+    ):
+        self.engine_config = config
+        self.dense_vector_set = BaseVectorSet.from_config(config.dense_vector_set)
+        self.sparse_vector_set = BaseVectorSet.from_config(config.sparse_vector_set)
+        self.alpha = alpha
+        self.force_rebuild = force_rebuild
+        self.dataset = config.dense_vector_set.dataset
+        self.channel = config.dense_vector_set.channel
+      
+        
+        
+        self.dense_embedder = BaseEmbedder.from_config(config.dense_vector_set.embedder)
+        self.sparse_embedder = BaseEmbedder.from_config(config.sparse_vector_set.embedder)
         #collection name has to be different enough so that collections don't collide. But even if collections of different 
         #config but same name do collide, the collection builder would handle it can build a new one. 
+        dense_model = config.dense_vector_set.embedder.model_name
+        sparse_model = config.sparse_vector_set.embedder.model_name
         self.collection_name = (f"dense={model_config[dense_model]['alias']}_\
                                 sparse={model_config[sparse_model]['alias']}_\
-                                dataset={dataset}_\
-                                channel={channel}")
-
-
-        metadata_schema = self.document_cls.metadata_schema()
-        for field_name in self.filter_cls.filter_fields():
-            f = metadata_schema[field_name]
-            fields.append(FieldConfig(
-                name=f.name,
-                dtype=f.type.to_milvus_type(),
-                max_length=f.max_len
-            ))
-
+                                dataset={self.dataset}_\
+                                channel={self.channel}")
+        
+        fields = self._get_metadata_fields(self.dataset)
         fields += [
             FieldConfig(name="sparse_vector", dtype=DataType.SPARSE_FLOAT_VECTOR),
             FieldConfig(name="dense_vector", dtype=DataType.FLOAT_VECTOR, dim=self.dense_vector_set.embedder.get_dim())
         ]
 
-        self.config = CollectionConfig(
+        self.collection_config = CollectionConfig(
             collection_name=self.collection_name,
             fields=fields,
             indexes=[
@@ -207,34 +266,9 @@ class HybridMilvusSearchEngine(SearchEngine):
             ]
         )
 
-    @classmethod
-    def from_config(cls, config: HybridMilvusConfig) -> 'HybridMilvusSearchEngine':
-        assert config.dense_vector_set.embedder.embedding_type == "dense", \
-            "Dense vector set must use a dense embedder"
-        assert config.sparse_vector_set.embedder.embedding_type == "sparse", \
-            "Sparse vector set must use a sparse embedder"
-        
-        assert config.dense_vector_set.dataset == config.sparse_vector_set.dataset, \
-            "Dense and sparse vector sets must have the same dataset"
-        
-        assert config.dense_vector_set.channel == config.sparse_vector_set.channel, \
-            "Dense and sparse vector sets must have the same channel"
-        assert config.dense_vector_set.chunker == config.sparse_vector_set.chunker, \
-            "Dense and sparse vector sets must have the same chunker configuration"
-        
-        dense_vs = BaseVectorSet.from_config(config.dense_vector_set)
-        sparse_vs = BaseVectorSet.from_config(config.sparse_vector_set)
-        
-        return cls(
-            dense_vector_set=dense_vs,
-            sparse_vector_set=sparse_vs,
-            alpha=config.alpha,
-        )
-        
-
     def setup(self):
-        logger.info(f"Setting up Milvus collection: {self.config.collection_name}, force_rebuild={self.force_rebuild}")
-        builder = CollectionBuilder.from_config(self.config)
+        logger.info(f"Setting up Milvus collection: {self.collection_config.collection_name}, force_rebuild={self.force_rebuild}")
+        builder = CollectionBuilder.from_config(self.collection_config)
         builder.connect()
         self.collection = (builder.build() 
                            if self.force_rebuild 
@@ -250,6 +284,7 @@ class HybridMilvusSearchEngine(SearchEngine):
         return dense, sparse._getrow(0)
 
     def insert(self, documents: List[Document]):
+        assert all(doc.source() == self.dense_vector_set.source for doc in documents), "All documents must belong to the same dataset"
         existing_pks = set()
         if documents:
             keys = [doc.key() for doc in documents]
@@ -270,61 +305,19 @@ class HybridMilvusSearchEngine(SearchEngine):
         sparse_embeddings = self.sparse_vector_set.retrieve(ids)  # Dict[str, csr_array]
 
         insert_dict = {
-            "pk": [],
-            "dense_vector": [],
-            "sparse_vector": [],
+            "pk": [f"{doc_id}-{i}" for doc_id in ids for i in range(len(dense_embeddings[doc_id]))],
+            "dense_vector": reduce(lambda x, y: x + y, [dense_embeddings[doc_id] for doc_id in ids], []),
+            "sparse_vector": vstack([sparse_embeddings[doc_id] for doc_id in ids])
         }
+        chunk_sizes: Dict[str, int] = {doc_id: len(dense_embeddings[doc_id]) for doc_id in ids}
+        insert_dict.update(
+            self.build_metadata_dict(new_docs, self.dataset, chunk_sizes)
+        )
+        self.operator.buffered_insert([insert_dict[k] for k in self.collection_config.field_names()])
 
-        for doc in new_docs:
-            doc_id = doc.key()
-            dense_chunks = dense_embeddings[doc_id]
-            sparse_chunks = sparse_embeddings[doc_id]
-            assert len(dense_chunks) == sparse_chunks.shape[0], \
-                  f"Mismatch in chunk counts for {doc_id}. This should be checked at initialization. Same channel and chunker should yield same number of chunks."
-
-            for i, (dense_vec, sparse_vec) in enumerate(zip(dense_chunks, sparse_chunks)):
-                chunk_id = f"{doc_id}-{i}"
-                insert_dict["pk"].append(chunk_id)
-                insert_dict["dense_vector"].append(dense_vec)
-                insert_dict["sparse_vector"].append(sparse_vec)
-
-        metadatas = [doc.metadata() for doc in new_docs]
-        for f_name in self.filter_cls.filter_fields():
-            values = []
-            for i, doc in enumerate(new_docs):
-                val = get(metadatas[i][f_name].contents, 0, metadatas[i][f_name].type.default_value())
-                values.extend([val] * len(dense_embeddings[doc.key()]))
-            insert_dict[f_name] = values
-
-        insert_dict['sparse_vector'] = vstack(insert_dict['sparse_vector'])
-        self.operator.buffered_insert([insert_dict[k] for k in self.config.field_names()])
-
-    def _get_query(self, filter: Filter) -> Optional[str]:
-        clauses = []
-        schema_map = filter._doc_cls_.metadata_schema()
-        logger.debug("milvus does not support must fields, only filter fields")
-        for field in self.filter_cls.filter_fields():
-            values = getattr(filter, field, None)
-            if values:
-                field_type = schema_map[field].type
-                if field_type in {FieldType.STRING, FieldType.BOOLEAN}:
-                    formatted = ",".join(f'"{v}"' for v in values)
-                else:
-                    formatted = ",".join(f"{v}" for v in values)
-                clauses.append(f"{field} in [{formatted}]")
-
-        return " and ".join(clauses) if clauses else None
-
-    def _grouped(self, chunk_ids: List[str]) -> List[str]: 
-        grouped = set()
-        for cid in chunk_ids:
-            doc_id = cid.split("-")[0]
-            grouped.add(doc_id)
-        return list(grouped)
-
-    def search(self, query: str, filter: Filter, limit: int = 100) -> List[str]:
+    def search(self, query: str, filter: Dict[str, List[str]], limit: int = 100) -> List[str]:
         dense_vector, sparse_vector = self.embed_query(query)
-        expr = self._get_query(filter)
+        expr = self._get_query_expr(self.dataset, filter)
         results = self.operator.search_hybrid(
             dense_vector=dense_vector,
             sparse_vector=sparse_vector,
@@ -333,56 +326,42 @@ class HybridMilvusSearchEngine(SearchEngine):
             output_fields=["pk"],
             expr=expr
         )
-        return self._grouped([hit.fields.get("pk", "") for hit in results[0]])
+        return self._group_chunk_ids([hit.fields.get("pk", "") for hit in results[0]])
+    
+    def config(self) -> SearchEngineConfig:
+        """
+        Returns the configuration of the hybrid Milvus search engine.
+        :return: An instance of SearchEngineConfig containing the hybrid Milvus search engine parameters.
+        """
+        return self.engine_config.model_copy()
 
     def spec(self) -> SearchSpec:
         return SearchSpec(name="milvus_search_engine", optimal_for="weak")
 
-
-class MilvusSearchEngine(SearchEngine):
-    document_cls: Type[Document]
-    filter_cls: Type[Filter]
-
+class MilvusSearchEngine(BaseMilvus, SearchEngine):
     def __init__(
         self,
-        vector_set: BaseVectorSet,
+        config: MilvusConfig,
         force_rebuild: bool = False,
     ):
-        self.vector_set = vector_set
-        self.dataset = vector_set.config().dataset
-        self.vector_type = self.vector_set.config().embedder.embedding_type
-        self.document_cls = Document.from_dataset(self.dataset)
-        self.filter_cls = Filter.from_dataset(self.dataset)
+        self.engine_config = config
+        self.vector_set = BaseVectorSet.from_config(config.vector_set)
+        self.embedder = BaseEmbedder.from_config(config.vector_set.embedder)
         self.force_rebuild = force_rebuild
-        self.embedder: BaseEmbedder = BaseEmbedder.from_config(self.vector_set.config().embedder)
-        vs_config = vector_set.config()
-        model = vs_config.embedder.model_name 
-        dataset = vs_config.dataset
-        channel = vs_config.channel
-        self.collection_name = (f"{model_config[model]['alias']}_{dataset}_{channel}_collection")
 
-        fields = [
-            FieldConfig(name="pk", dtype=DataType.VARCHAR, is_primary=True, max_length=100)
-        ]
-        metadata_schema = self.document_cls.metadata_schema()
-        for field_name in self.filter_cls.filter_fields():
-            f = metadata_schema[field_name]
-            fields.append(FieldConfig(
-                name=f.name,
-                dtype=f.type.to_milvus_type(),
-                max_length=f.max_len
-            ))
+        self.dataset = config.vector_set.dataset
+        self.channel = config.vector_set.channel
+        self.vector_type = config.vector_set.embedder.embedding_type
 
-        if self.vector_type == "sparse":
-            fields.append(FieldConfig(name="sparse_vector", dtype=DataType.SPARSE_FLOAT_VECTOR))
-            indexes = [
-                IndexConfig(
-                    field_name="sparse_vector",
-                    index_params={"index_type": "SPARSE_INVERTED_INDEX", "metric_type": "IP"}
-                )
-            ]
-        elif self.vector_type == "dense":
-            fields.append(FieldConfig(name="dense_vector", dtype=DataType.FLOAT_VECTOR, dim=self.vector_set.embedder.get_dim()))
+        model = config.vector_set.embedder.model_name
+        self.collection_name = (
+            f"{model_config[model]['alias']}_"
+            f"{self.dataset}_{self.channel}_collection"
+        )
+        fields = self._get_metadata_fields(self.dataset)
+
+        if self.vector_type == "dense":
+            fields.append(FieldConfig(name="dense_vector", dtype=DataType.FLOAT_VECTOR, dim=self.embedder.get_dim()))
             indexes = [
                 IndexConfig(
                     field_name="dense_vector",
@@ -393,42 +372,41 @@ class MilvusSearchEngine(SearchEngine):
                     }
                 )
             ]
+        elif self.vector_type == "sparse":
+            fields.append(FieldConfig(name="sparse_vector", dtype=DataType.SPARSE_FLOAT_VECTOR))
+            indexes = [
+                IndexConfig(
+                    field_name="sparse_vector",
+                    index_params={"index_type": "SPARSE_INVERTED_INDEX", "metric_type": "IP"}
+                )
+            ]
         else:
-            raise ValueError("Unsupported vector_type. Must be 'dense' or 'sparse'.")
+            raise ValueError(f"Unsupported vector type: {self.vector_type}")
 
-        self.config = CollectionConfig(
+        self.collection_config = CollectionConfig(
             collection_name=self.collection_name,
             fields=fields,
             indexes=indexes
         )
 
-    @classmethod
-    def from_config(cls, config: MilvusConfig) -> 'MilvusSearchEngine':
-        """
-        Factory method to create a MilvusSearchEngine instance from a configuration.
-        :param config: Configuration object containing Milvus search engine parameters.
-        :return: An instance of MilvusSearchEngine.
-        """
-        return cls(vector_set = BaseVectorSet.from_config(config.vector_set)) 
-    
     def setup(self):
-        logger.info(f"Setting up Milvus collection: {self.config.collection_name}, force_rebuild={self.force_rebuild}")
-        builder = CollectionBuilder.from_config(self.config)
+        logger.info(f"Setting up Milvus collection: {self.collection_config.collection_name}, force_rebuild={self.force_rebuild}")
+        builder = CollectionBuilder.from_config(self.collection_config)
         builder.connect()
-        self.collection = (builder.build() 
-                           if self.force_rebuild 
-                           else coalesce(builder.get_existing, builder.build))
+        self.collection = (
+            builder.build() if self.force_rebuild
+            else coalesce(builder.get_existing, builder.build)
+        )
         self.vector_set.setup()
         self.operator = CollectionOperator(self.collection)
 
     def embed_query(self, query: str):
         embedding = self.embedder.embed([query])
         if self.vector_type == "dense":
-            assert isinstance(embedding, List) and len(embedding) == 1, "Dense embedder must return a single vector"
+            assert isinstance(embedding, list) and len(embedding) == 1
             return embedding[0]
         elif self.vector_type == "sparse":
-            assert isinstance(embedding, csr_array), "Sparse embedder must return csr_array"
-            assert embedding.shape[0] == 1, "Expected a single-row sparse vector"
+            assert isinstance(embedding, csr_array) and embedding.shape[0] == 1
             return embedding._getrow(0)
 
     def insert(self, documents: List[Document]):
@@ -446,146 +424,123 @@ class MilvusSearchEngine(SearchEngine):
 
         self.vector_set.upsert([doc for doc in new_docs if not self.vector_set.has(doc.key())])
         embeddings = self.vector_set.retrieve([doc.key() for doc in new_docs])
+
+        ids = [doc.key() for doc in new_docs]
         insert_dict = {
-            "pk": [],
-            self.vector_type + "_vector": [],
+            "pk": [f"{doc_id}-{i}" for doc_id in ids for i in range(len(embeddings[doc_id]))],
         }
+        if self.vector_type == "dense":
+            insert_dict["dense_vector"] = reduce(
+                lambda x, y: x + y, [embeddings[doc_id] for doc_id in ids], []
+            )
+        elif self.vector_type == "sparse":
+            insert_dict["sparse_vector"] = vstack([embeddings[doc_id] for doc_id in ids])
 
-        for doc in new_docs:
-            doc_id = doc.key()
-            chunks = embeddings[doc_id]
-            for i, emb in enumerate(chunks):
-                chunk_id = f"{doc_id}-{i}"
-                insert_dict["pk"].append(chunk_id)
-                insert_dict[self.vector_type + "_vector"].append(emb)
+        chunk_sizes: Dict[str, int] = {doc_id: len(embeddings[doc_id]) for doc_id in ids}
+        insert_dict.update(
+            self.build_metadata_dict(new_docs, self.dataset, chunk_sizes)
+        )
+        self.operator.buffered_insert([insert_dict[k] for k in self.collection_config.field_names()])
 
-        metadatas = [doc.metadata() for doc in new_docs]
-        for f_name in self.filter_cls.filter_fields():
-            values = []
-            for i, doc in enumerate(new_docs):
-                val = get(metadatas[i][f_name].contents, 0, metadatas[i][f_name].type.default_value())
-                values.extend([val] * len(embeddings[doc.key()]))
-            insert_dict[f_name] = values
-
-        self.operator.buffered_insert([insert_dict[k] for k in self.config.field_names()])
-
-    def _get_query(self, filter: Filter) -> Optional[str]:
-        clauses = []
-        schema_map = filter._doc_cls_.metadata_schema()
-        logger.debug("milvus does not support must fields, only filter fields")
-        for field in self.filter_cls.filter_fields():
-            values = getattr(filter, field, None)
-            if values:
-                field_type = schema_map[field].type
-                if field_type in {FieldType.STRING, FieldType.BOOLEAN}:
-                    formatted = ",".join(f'"{v}"' for v in values)
-                else:
-                    formatted = ",".join(f"{v}" for v in values)
-                clauses.append(f"{field} in [{formatted}]")
-
-        return " and ".join(clauses) if clauses else None
-
-    def _grouped(self, chunk_ids: List[str]) -> List[str]: 
-        grouped = set()
-        for cid in chunk_ids:
-            doc_id = cid.split("-")[0]
-            grouped.add(doc_id)
-        return list(grouped)
-
-    def search(self, query: str, filter: Filter, limit: int = 100) -> List[str]:
-        vector = self.embed_query(query)
-        expr = self._get_query(filter)
+    def search(self, query: str, filter: Dict[str, List[str]], limit: int = 100) -> List[str]:
+        query_vector = self.embed_query(query)
+        expr = self._get_query_expr(filter)
         results = self.operator.search(
-            query_vector=vector,
+            query_vector=query_vector,
             anns_field=self.vector_type + "_vector",
             limit=limit,
             expr=expr,
             output_fields=["pk"]
         )
-        return self._grouped([hit.fields.get("pk", "") for hit in results[0]])
+        return self._group_chunk_ids([hit.fields.get("pk", "") for hit in results[0]])
 
+    def config(self) -> SearchEngineConfig:
+        """
+        Returns the configuration of the Milvus search engine.
+        :return: An instance of SearchEngineConfig containing the Milvus search engine parameters.
+        """
+        return self.engine_config.model_copy()
+    
     def spec(self) -> SearchSpec:
         return SearchSpec(name="milvus_search_engine", optimal_for="weak")
 
 
-class ElasticSearchEngine(SearchEngine):
-    document_cls: Type[Document]
-    filter_cls: Type[Filter]
 
-    def __init__(
-        self,
-        dataset: str, 
-        es_host: str,
-        es_index: str = "elastic_index",
-        force_rebuild: bool = False
-    ):
-        config = yaml.safe_load(open("config/elastic_search.yml", "r"))
-        self.es = Elasticsearch(
-            [es_host],
-            basic_auth=("elastic", config["password"]),
-            verify_certs=True,
-            ca_certs=config["ca_certs"]
-        )
-        self.es_index = es_index
-        self.document_cls = Document.from_dataset(dataset)
-        self.filter_cls = Filter.from_dataset(dataset)
+class ElasticSearchEngine(SearchEngine):
+    def __init__(self, config: ElasticSearchConfig, force_rebuild: bool = False):
+        self.engine_config = config
+        self.dataset = config.dataset
+        self.es_index = config.es_index
         self.force_rebuild = force_rebuild
 
-        # Extract schema fields
-        schema = self.document_cls.metadata_schema()
+        # Connect to Elastic instance
+        yaml_config = yaml.safe_load(open("config/elastic_search.yml", "r"))
+        self.es = Elasticsearch(
+            [config.es_host],
+            basic_auth=("elastic", yaml_config["password"]),
+            verify_certs=True,
+            ca_certs=yaml_config["ca_certs"]
+        )
+
+        # Map filter fields to elastic field types
         self.field_types = {
-            schema[f].name: "keyword" if schema[f].type.value == "str" else "integer"
-            for f in self.filter_cls.filter_fields() + self.filter_cls.must_fields()
+            f.name: self.dataset.get_entry(f.name).type.to_elastic_type()
+            for f in self.dataset.filters
         }
 
     @classmethod
-    def from_config(cls, config: ElasticSearchConfig) -> 'ElasticSearchEngine':
-        """
-        Factory method to create an ElasticSearchEngine instance from a configuration.
-        :param config: Configuration object containing ElasticSearch parameters.
-        :return: An instance of ElasticSearchEngine.
-        """
-        return cls(
-            dataset=config.dataset,
-            es_host=config.es_host,
-            es_index=config.es_index,
-        )
+    def from_config(cls, config: ElasticSearchConfig) -> "ElasticSearchEngine":
+        return cls(config)
 
-    def setup(self): 
-        # Build index if needed
+    def setup(self):
         builder = ElasticIndexBuilder(
             es=self.es,
-            config=ElasticIndexConfig(es_index=self.es_index, fields=self.field_types)
+            config=ElasticIndexConfig(
+                es_index=self.es_index,
+                fields=self.field_types
+            )
         )
         builder.build(force_rebuild=self.force_rebuild)
 
     def insert(self, docs: List[Document]):
+        actions = []
         for doc in docs:
-            if self.es.exists(index=self.es_index, id=doc.key()):
-                continue  # Skip duplicates
-            data = doc.metadata()
-            body = {
-                data[f].name: data[f].contents
-                for f in self.filter_cls.filter_fields() + self.filter_cls.must_fields()
-            }
-            self.es.index(index=self.es_index, id=doc.key(), body=body)
+            doc_id = doc.key()
+            if self.es.exists(index=self.es_index, id=doc_id):
+                continue
 
-    def _get_query(self, filter: Filter) -> Dict:
+            body = {}
+            for f in self.dataset.filters:
+                entry = doc.metadata().get(f.name)
+                value = coalesce(
+                    get(entry.contents, 0),
+                    entry.meta.type.default_value()
+                )
+                body[f.name] = value
+
+            actions.append({
+                "_index": self.es_index,
+                "_id": doc_id,
+                "_source": body
+            })
+
+        if actions:
+            success, _ = bulk(self.es, actions)
+            logger.info(f"Inserted {success} documents into {self.es_index}")
+
+    def _get_query(self, filter: Dict[str, List[str]]) -> Dict:
         must_clauses = []
         filter_clauses = []
 
-        for field in self.filter_cls.must_fields():
-            values = getattr(filter, field, None)
+        for name, values in filter.items():
+            f = self.dataset.get_filter(name)
             if not values:
                 continue
-            for val in values:
-                must_clauses.append({"match_phrase": {field: val}})
-
-        for field in self.filter_cls.filter_fields():
-            values = getattr(filter, field, None)
-            if not values:
-                continue
-            filter_clauses.append({"terms": {field: values}})
+            if f.filter_type == "must":
+                for val in values:
+                    must_clauses.append({"match_phrase": {name: val}})
+            elif f.filter_type == "filter":
+                filter_clauses.append({"terms": {name: values}})
 
         return {
             "query": {
@@ -596,10 +551,17 @@ class ElasticSearchEngine(SearchEngine):
             }
         }
 
-    def search(self, query: str, filter: Filter, limit: int = 10000) -> List[str]:
+    def search(self, query: str, filter: Dict[str, List[str]], limit: int = 10000) -> List[str]:
         es_query = self._get_query(filter)
         response = self.es.search(index=self.es_index, body=es_query, size=limit)
         return [hit["_id"] for hit in response["hits"]["hits"]]
 
+    def config(self) -> SearchEngineConfig:
+        """
+        Returns the configuration of the ElasticSearch engine.
+        :return: An instance of SearchEngineConfig containing the ElasticSearch parameters.
+        """
+        return self.engine_config.model_copy()
+    
     def spec(self) -> SearchSpec:
         return SearchSpec(name="elastic_search_engine", optimal_for="strong")
