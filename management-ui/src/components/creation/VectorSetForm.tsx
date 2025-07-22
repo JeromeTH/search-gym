@@ -1,86 +1,74 @@
-import { useEffect, useState } from "react";
-import type { VectorSetConfig, DatasetConfig, ChunkerConfig, EmbedderConfig } from "../../types/app";
-import DatasetForm from "./DatasetForm";
+import { useState } from "react";
+import type {
+  VectorSetConfig,
+  DatasetConfig,
+  ChunkerConfig,
+  EmbedderConfig,
+} from "../../types/app";
+import DatasetSelector from "../selectors/DatasetSelector";
+import ChannelSelector from "../selectors/ChannelSelector";
+import ChunkerEditor from "../editors/ChunkerEditor";
+import EmbedderEditor from "../editors/EmbedderEditor";
 
 interface VectorSetFormProps {
-    onSubmit: (config: VectorSetConfig) => void;
+  onSubmit: (config: VectorSetConfig) => void;
 }
 
 export default function VectorSetForm({ onSubmit }: VectorSetFormProps) {
-    const [datasets, setDatasets] = useState<DatasetConfig[]>([]);
-    const [selectedDataset, setSelectedDataset] = useState<DatasetConfig | null>(null);
-    const [creatingDataset, setCreatingDataset] = useState(false);
+  const [selectedDataset, setSelectedDataset] = useState<DatasetConfig | null>(null);
+  const [channel, setChannel] = useState("");
+  const [root, setRoot] = useState("");
+  const [chunker, setChunker] = useState<ChunkerConfig | null>(null);
+  const [embedder, setEmbedder] = useState<EmbedderConfig | null>(null);
 
-    const [channel, setChannel] = useState("");
-    const [chunker, setChunker] = useState<ChunkerConfig>({ type: "length_chunker", chunk_size: 512, overlap: 50 });
-    const [embedder, setEmbedder] = useState<EmbedderConfig>({ type: "auto_model", embedding_type: "dense", model_name: "" });
-    const [root, setRoot] = useState("");
+  const handleSubmit = () => {
+    if (!selectedDataset || !chunker || !embedder) return;
+    onSubmit({
+      root,
+      dataset: selectedDataset,
+      channel,
+      chunker,
+      embedder,
+    });
+  };
 
-    useEffect(() => {
-        fetch("/api/datasets").then(res => res.json()).then(setDatasets);
-    }, []);
+  return (
+    <div>
+      <h2>Create Vector Set</h2>
 
-    const handleSubmit = () => {
-        if (!selectedDataset) return;
-        onSubmit({
-            root,
-            dataset: selectedDataset,
-            channel,
-            chunker,
-            embedder,
-        });
-    };
+      <div>
+        <label>Root Path</label>
+        <input
+          placeholder="/path/to/vector/store"
+          value={root}
+          onChange={(e) => setRoot(e.target.value)}
+        />
+      </div>
 
-    return (
-        <div>
-            <div>
-                <label>Root Path</label>
-                <input
-                    placeholder="/path/to/vector/store"
-                    value={root}
-                    onChange={(e) => setRoot(e.target.value)}
-                />
-            </div>
-            <h2>Create Vector Set</h2>
-            {creatingDataset ? (
-                <DatasetForm onSubmit={(ds) => {
-                    setSelectedDataset(ds);
-                    setCreatingDataset(false);
-                    setDatasets((prev) => [...prev, ds]);
-                }} />
-            ) : (
-                <>
-                    <label>Select Dataset</label>
-                    <select value={selectedDataset?.name ?? ""} onChange={(e) => {
-                        const selected = datasets.find(d => d.name === e.target.value);
-                        setSelectedDataset(selected ?? null);
-                    }}>
-                        <option value="">-- Select --</option>
-                        {datasets.map(ds => (
-                            <option key={ds.name} value={ds.name}>{ds.name}</option>
-                        ))}
-                    </select>
-                    <button onClick={() => setCreatingDataset(true)}>+ Create New Dataset</button>
-                </>
-            )}
-            {selectedDataset && (
-                <>
-                    <label>Channel</label>
-                    <select value={channel} onChange={(e) => setChannel(e.target.value)}>
-                        <option value="">-- Select --</option>
-                        {selectedDataset.channels.map(ch => (
-                            <option key={ch.name} value={ch.name}>{ch.name}</option>
-                        ))}
-                    </select>
+      <DatasetSelector
+        value={selectedDataset?.name ?? ""}
+        onChange={(ds) => {
+          setSelectedDataset(ds);
+          setChannel("");
+        }}
+      />
 
-                    <label>Embedder Model</label>
-                    <input value={embedder.model_name} onChange={(e) =>
-                        setEmbedder({ ...embedder, model_name: e.target.value })
-                    } />
-
-                    <button onClick={handleSubmit}>Create Vector Set</button>
-                </>
-            )}
+      {!selectedDataset?.id ? (
+        <div style={{ color: "red", marginTop: "10px" }}>
+          ⚠️ Please create a dataset before creating a vector set.
         </div>
-    );
+      ) : (
+        <>
+          <ChannelSelector
+            datasetId={selectedDataset.id}
+            value={channel}
+            onChange={setChannel}
+          />
+          <ChunkerEditor config={chunker} onChange={setChunker} />
+          <EmbedderEditor config={embedder} onChange={setEmbedder} />
+          <button onClick={handleSubmit}>Create Vector Set</button>
+        </>
+      )}
+    </div>
+  );
 }

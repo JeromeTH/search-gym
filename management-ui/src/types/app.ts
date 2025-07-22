@@ -1,6 +1,8 @@
 // ------------------ Shared ------------------
 
-export type EntryType = "str" | "int" | "float" | "bool";
+// EntryType
+export const EntryValues = ["str", "int", "float", "bool"] as const;
+export type EntryType = (typeof EntryValues)[number];
 
 export interface EntryMeta {
   name: string;
@@ -9,7 +11,9 @@ export interface EntryMeta {
   is_required?: boolean; // default = true
 }
 
-export type FilterType = "filter" | "must";
+// FilterType
+export const FilterTypeValues = ["filter", "must"] as const;
+export type FilterType = (typeof FilterTypeValues)[number];
 
 export interface Filter {
   name: string;
@@ -19,7 +23,8 @@ export interface Filter {
 // ------------------ Dataset ------------------
 
 export interface DatasetConfig {
-  root: string; 
+  id?: string; // auto-generated if not provided
+  root: string;
   name: string;
   description?: string;
   format: "json";
@@ -31,20 +36,32 @@ export interface DatasetConfig {
 
 // ------------------ Chunker ------------------
 
+export const ChunkerTypeValues = ["length_chunker", "sentence_chunker"] as const;
+export type ChunkerType = (typeof ChunkerTypeValues)[number];
+
 export interface LengthChunkerConfig {
   type: "length_chunker";
   chunk_size: number;
   overlap: number;
 }
 
+export const languageValues = ["en", "zh"] as const;
+export type Language = (typeof languageValues)[number];
+
 export interface SentenceChunkerConfig {
   type: "sentence_chunker";
-  language: "en" | "zh";
+  language: Language;
 }
 
 export type ChunkerConfig = LengthChunkerConfig | SentenceChunkerConfig;
 
 // ------------------ Embedder ------------------
+
+export const EmbedderTypeValues = ["auto_model", "bge"] as const;
+export type EmbedderType = (typeof EmbedderTypeValues)[number];
+
+export const EmbeddingTypeValues = ["dense", "sparse"] as const;
+export type EmbeddingType = (typeof EmbeddingTypeValues)[number];
 
 export interface AutoModelEmbedderConfig {
   type: "auto_model";
@@ -63,7 +80,7 @@ export type EmbedderConfig = AutoModelEmbedderConfig | BGEEmbedderConfig;
 // ------------------ Vector Set ------------------
 
 export interface VectorSetConfig {
-  root: string; 
+  root: string;
   dataset: DatasetConfig;
   channel: string;
   chunker: ChunkerConfig;
@@ -71,6 +88,9 @@ export interface VectorSetConfig {
 }
 
 // ------------------ Search Engines ------------------
+
+export const SearchEngineTypeValues = ["milvus", "elasticsearch", "hybrid_milvus", "sequential"] as const;
+export type SearchEngineType = (typeof SearchEngineTypeValues)[number];
 
 export interface MilvusConfig {
   type: "milvus";
@@ -104,12 +124,18 @@ export type SearchEngineConfig =
 
 // ------------------ Router and Reranker ------------------
 
+export const RouterTypeValues = ["simple"] as const;
+export type RouterType = (typeof RouterTypeValues)[number];
+
 export interface RouterConfig {
-  type: "simple";
+  type: RouterType;
 }
 
+export const RerankerTypeValues = ["identity", "auto_model"] as const;
+export type RerankerType = (typeof RerankerTypeValues)[number];
+
 export interface RerankerConfig {
-  type: "identity" | "auto_model";
+  type: RerankerType;
 }
 
 // ------------------ App Config ------------------

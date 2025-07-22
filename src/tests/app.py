@@ -9,7 +9,6 @@ from src.core.schema import (
 from src.core.app import App 
 from src.run.state import BaseState
 from src.utils.logging import setup_logger
-from src.tests.const import NCL_DENSE_VS
 
 import logging
 

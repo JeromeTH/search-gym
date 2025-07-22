@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
 from src.core.schema import AppConfig
 from contextlib import asynccontextmanager
-from src.run.adaptor import assemble_app_config 
 from typing import Dict, Any, List
 from src.run.state import BaseState
 from src.core.vector_set import BaseVectorSet
@@ -11,6 +10,8 @@ from src.core.dataset import Dataset
 from src.core.schema import VectorSetConfig, AppConfig, DatasetConfig
 from src.core.app import App
 from src.const.dataset import NCL
+from src.const.chunker import LENGTH_CHUNKER, SENTENCE_CHUNKER
+from src.const.embedder import AUTO_MODEL_EMBEDDER, BGE_EMBEDDER
 import yaml
 import os
 api = FastAPI()
@@ -58,68 +59,69 @@ api.add_middleware(
     allow_headers=["*"],
 )
 
+#------------- default values -----------------
 @api.get("/defaults/dataset", response_model=DatasetConfig)
 def get_default_dataset():
     return NCL
 
+# ------------- default values -----------------
+@api.get("/defaults/chunker")
+def get_default_chunkers():
+    return {
+        "length_chunker": LENGTH_CHUNKER.model_dump(),
+        "sentence_chunker": SENTENCE_CHUNKER.model_dump(),
+    }
 
-@api.get("/api/{dataset}/channel")
-def get_channels(dataset: str):
-    """
-    Input: id of the dataset
-    Output: list of channels for the dataset
-    """
+@api.get("/defaults/embedder")
+def get_default_embedders():
+    return {
+        "auto_model": AUTO_MODEL_EMBEDDER.model_dump(),
+        "bge": BGE_EMBEDDER.model_dump(),
+    }
+
+
+#-------------Creation logic ------------------
+@api.post("/dataset/create")
+def create_dataset(config: Dict[str, Any]) -> DatasetConfig:
     try:
-        dataset_state.get_config(dataset).channels
-    except KeyError:
-        raise HTTPException(status_code=404, detail="Dataset not found")
-
-@api.get("/app_state/apps")
-def list_apps():
-    return app_state.list_ids()
-
-@api.get("/app_state/app/{id}")
-def get_app_metadata(id: str):
-    try:
-        return app_state.get_config(id)
-    except KeyError:
-        raise HTTPException(status_code=404, detail="App not found")
-
-@api.post("/app_state/app")
-def create_app(form: Dict[str, Any]):
-    try:
-        config = assemble_app_config(form)
-        app_state.register_app(config)
-        return {"status": "created"}
+        dconfig: DatasetConfig = DatasetConfig.from_dict(config)
+        dataset_state.register(dconfig)
+        return dconfig
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@api.post("/app_state/activate/{name}")
-def activate_app(name: str):
+@api.post("/vector_set/create")
+def create_vector_set(config: Dict[str, Any]) -> VectorSetConfig:
     try:
-        app_state.activate_app(name)
-        return {"status": "activated"}
-    except KeyError:
-        raise HTTPException(status_code=404, detail="App not found")
-
-@api.delete("/app_state/app/{name}")
-def delete_app(name: str):
-    try:
-        app_state.remove_app(name)
-        return {"status": "removed"}
-    except KeyError:
-        raise HTTPException(status_code=404, detail="App not found")
-
-@api.get("/search/{app_id}")
-def search(app_id, query, filt):
-    try:
-        app = app_state.get_obj(app_id)
-        app_config = app_state.get_config(app_id)
-        filt_cls = Filter.from_dataset(app_config.dataset)
-        f = filt_cls.model_validate(filt)
-        results = app.search(query=query, filter=f, limit=5)
-        return results
-    except KeyError:
-        raise HTTPException(status_code=404, detail="App not found")
+        vconfig: VectorSetConfig = VectorSetConfig.from_dict(config)
+        vector_set_state.register(vconfig)
+        return vconfig
+    
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        raise HTTPException(status_code=500, detail=f"Unhandled error: {str(e)}")
+
+@api.post("/app/create")
+def create_app(config: Dict[str, Any]) -> AppConfig:
+    try:
+        aconfig: AppConfig = AppConfig.from_dict(config)
+        app_state.register(aconfig)
+        return aconfig
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Unhandled error: {str(e)}")
+    
+
+@api.get("/api/{dataset}/channel", response_model=List[str])
+def get_channels(dataset: str):
+    """
+    Input: id of the dataset
+    Output: list of channel names, e.g., ["abstract", "content"]
+    """
+    try:
+        config = dataset_state.get_config(dataset)
+        return [ch.name for ch in config.channels]
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Dataset not found")

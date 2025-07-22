@@ -1,13 +1,12 @@
 import { useState } from "react";
 import type { EntryMeta, EntryType } from "../../types/app";
+import { EntryValues } from "../../types/app"; // Use the constant values
 
 interface Props {
   entries: EntryMeta[];
   onChange: (updated: EntryMeta[]) => void;
   label: string;
 }
-
-const entryTypes: EntryType[] = ["str", "int", "float", "bool"];
 
 export default function EntryMetaEditor({ entries, onChange, label }: Props) {
   const [newField, setNewField] = useState<EntryMeta>({
@@ -52,8 +51,10 @@ export default function EntryMetaEditor({ entries, onChange, label }: Props) {
           value={newField.type}
           onChange={(e) => setNewField({ ...newField, type: e.target.value as EntryType })}
         >
-          {entryTypes.map((t) => (
-            <option key={t} value={t}>{t}</option>
+          {EntryValues.map((t) => (
+            <option key={t} value={t}>
+              {t}
+            </option>
           ))}
         </select>
         <input

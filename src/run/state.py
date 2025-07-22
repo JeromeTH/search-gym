@@ -44,6 +44,9 @@ class BaseState(Generic[T, S]):
         with open(path, "w", encoding="utf-8") as f:
             yaml.dump(config.model_dump(), f, sort_keys=False)
 
+    def has(self, id: str) -> bool:
+        return id in self._configs
+
     def activate(self, id: str):
         config = self._configs[id]
         obj = self._obj_cls.from_config(config)

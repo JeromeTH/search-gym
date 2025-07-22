@@ -4,6 +4,9 @@ from pydantic import BaseModel, model_validator, ConfigDict
 from enum import Enum
 from pymilvus import DataType
 from typing import Any, Dict, Type, Self
+from src.core.util import deterministic_get_id
+import json
+from datetime import datetime
 
 class StaticBaseModel(BaseModel): 
     model_config = ConfigDict(frozen=True)
@@ -104,8 +107,15 @@ class DatasetConfig(StoredConfig):
             if f.name == name:
                 return f
         raise KeyError(f"Filter '{name}' not found in dataset filters.")
-
-
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "DatasetConfig":
+        if "id" not in data:
+            # Remove unstable fields like `created_by`
+            stable_data = {k: v for k, v in data.items() if k != "created_by"}
+            stable_str = json.dumps(stable_data, sort_keys=True)
+            data["id"] = deterministic_get_id(stable_str)
+        return cls(**data)
 
 # ---------------- Router and Reranker ----------------
 
@@ -149,6 +159,26 @@ class VectorSetConfig(StoredConfig):
     channel: str
     chunker: ChunkerConfig
     embedder: EmbedderConfig
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "VectorSetConfig":
+        """
+        Assumes:
+        - `dataset` is already a DatasetConfig.
+        - All fields are valid.
+        - `id` is deterministically generated from core fields.
+        """
+
+        if "id" not in data:
+            key_data = {
+                "root": data["root"],
+                "channel": data["channel"],
+                "chunker": data["chunker"],
+                "embedder": data["embedder"],
+                "dataset_id": data["dataset"].id,
+            }
+            data["id"] = deterministic_get_id(str(key_data))
+        return cls(**data)
 
 # ---------------- Search Engine Configs ----------------
 
@@ -238,3 +268,26 @@ class AppConfig(StoredConfig):
     created_by: Optional[str] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "AppConfig":
+        """
+        Construct a validated AppConfig object from a raw dict. Inject ID if not present.
+        All nested objects (e.g., vector set, search engine, etc.) should already be valid dicts.
+        Requires: All nested search engine configs are already pydantic models. 
+        """
+        if "id" not in data:
+            # Create a deterministic ID from name + search_engines + router + reranker (exclude timestamps)
+            id_source = {
+                "name": data["name"],
+                "search_engines": data["search_engines"],
+                "router": data["router"],
+                "reranker": data["reranker"],
+            }
+            data["id"] = deterministic_get_id(str(id_source))
+
+        # Inject timestamps if not provided
+        now_str = datetime.now().isoformat()
+        data.setdefault("created_at", now_str)
+        data.setdefault("updated_at", now_str)
+        return cls(**data)

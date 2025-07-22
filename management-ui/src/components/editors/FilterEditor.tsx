@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { Filter, FilterType } from "../../types/app";
+import { FilterTypeValues } from "../../types/app";
 
 interface Props {
   filters: Filter[];
@@ -46,8 +47,11 @@ export default function FilterEditor({ filters, onChange }: Props) {
           value={newFilter.filter_type}
           onChange={(e) => setNewFilter({ ...newFilter, filter_type: e.target.value as FilterType })}
         >
-          <option value="filter">filter</option>
-          <option value="must">must</option>
+          {FilterTypeValues.map((ft) => (
+            <option key={ft} value={ft}>
+              {ft}
+            </option>
+          ))}
         </select>
         <button onClick={handleAdd}>Add</button>
       </div>
