@@ -1,30 +1,10 @@
 import unittest
-from src.core.data import DataLoader
+from src.core.dataset import Dataset
 from src.core.document import Document
-
-class TestDataLoaders(unittest.TestCase):
-    # def test_arxiv_dataloader(self):
-    #     self._test_dataloader_runs("arxiv")
-
-    # def test_history_dataloader(self):
-    #     self._test_dataloader_runs("history")
-
-    def test_litsearch_dataloader(self):
-        self._test_dataloader_runs("litsearch")
-
-    def _test_dataloader_runs(self, dataset_name: str):
-        dataloader = DataLoader.from_default(dataset_name)
-        count = 0
-
-        for batch in dataloader.load():
-            self.assertIsInstance(batch, list)
-            for doc in batch:
-                self.assertIsInstance(doc, Document)
-            count += 1
-            if count >= 100:
-                break
-
-        self.assertGreater(count, 0, f"{dataset_name} dataloader did not yield any batches.")
+from src.const.dataset import NCL
+from tqdm import tqdm
 
 if __name__ == "__main__":
-    unittest.main()
+    dataset = Dataset.from_config(NCL)
+    for i, doc, in tqdm(enumerate(dataset.stream())):
+        if i > 1000: break

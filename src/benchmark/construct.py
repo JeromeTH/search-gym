@@ -2,7 +2,7 @@ from pydantic import BaseModel
 from typing import List
 from src.core.llm import Agent
 from src.core.document import Document
-from src.core.data import Sampler, PrefixSampler, DataLoader
+from src.core.dataset import Sampler, PrefixSampler, Dataset
 from src.benchmark.entity import Benchmark
 from src.benchmark.io import save_benchmarks, load_benchmarks
 from tqdm import tqdm
@@ -24,7 +24,7 @@ def generate_benchmarks(documents: List[Document], prompt: str, llm: Agent) -> L
 if __name__ == "__main__":
     llm = Agent.from_vllm(CHATBOT)
     PROMPT = "請為以下文檔生成一個問題，該問題的答案應該是文檔的摘要。請給問體本身就好。"
-    dataloader = DataLoader.from_default(DATASET)
+    dataloader = Dataset.from_config(DATASET)
     sampler: Sampler = PrefixSampler(dataloader, max_samples = 100)
     documents = [doc for doc in sampler.sample()]
     benchmarks = generate_benchmarks(documents, PROMPT, llm)

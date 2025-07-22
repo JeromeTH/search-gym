@@ -112,7 +112,7 @@ class CollectionBuilder:
         # Drop existing collection if it exists
         logger.info(f"Building collection {self.collection_name} with fields: {[field.name for field in self.fields]} and indexes: {[index.field_name for index in self.indexes]}")
         if utility.has_collection(self.collection_name):
-            Collection(self.collection_name).drop()
+            utility.drop_collection(self.collection_name)
 
         self._save_config()
         field_schemas = [FieldSchema(**field.model_dump(exclude_none=True)) for field in self.fields]

@@ -8,7 +8,7 @@ from src.core.schema import VectorSetConfig
 from src.core.chunker import BaseChunker
 from src.core.embedder import BaseEmbedder
 from src.core.document import Document
-from src.core.data import DataLoader
+from src.core.dataset import Dataset
 from tqdm import tqdm
 import logging
 logger = logging.getLogger('taihu')
@@ -17,6 +17,7 @@ class BaseVectorSet(StoredObj):
     def __init__(self, config: VectorSetConfig):
         self._config = config
         self.root = config.root
+        self.source = config.dataset.id
         self.chunker = BaseChunker.from_config(config.chunker)
         self.embedder = BaseEmbedder.from_config(config.embedder)
         self.channel = config.channel
@@ -25,6 +26,7 @@ class BaseVectorSet(StoredObj):
         return self._config
 
     def upsert(self, docs: List[Document]):
+        assert all(doc.source() == self.source for doc in docs), "All documents must belong to the same dataset"
         if not docs: return 
         contents = self.chunker.chunk([" ".join(doc.channels()[self.channel].contents) for doc in docs])
         assert len(contents) == len(docs), "Chunker should return same number of chunks as documents"
@@ -34,7 +36,7 @@ class BaseVectorSet(StoredObj):
 
     def setup(self):
         logger.info(f"Setting up vector set at {self.root}")
-        dataloader = DataLoader.from_default(self._config.dataset)
+        dataloader = Dataset.from_config(self._config.dataset)
         need_insert = [doc for doc in dataloader.stream() if not self.has(doc.key())]
         BATCH_SIZE = 64
         logger.info(f"Existing vector set size: {self.size()}")
@@ -42,7 +44,7 @@ class BaseVectorSet(StoredObj):
         for i in tqdm(range(0, len(need_insert), BATCH_SIZE), desc="Inserting documents"):
             batch = need_insert[i:i + BATCH_SIZE]
             self.upsert(batch)
-        self.save()
+        if len(need_insert) > 0: self.save()
 
     def save(self):
         logger.info(f"Saving vector set to {self.root}")

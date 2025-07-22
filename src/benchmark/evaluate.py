@@ -3,7 +3,7 @@ evaluates a milvus collection with a list of queries and expected results.
 The benchmark must be built on the same data as the collection, so that the correct answer exists in the collection.
 '''
 from src.main.app import SearchApp
-from src.core.data import DataLoader, Sampler, PrefixSampler
+from src.core.dataset import Dataset, Sampler, PrefixSampler
 from src.benchmark.io import BenchmarkFactory, save_report
 from src.benchmark.entity import Benchmark, Report
 from src.core.library import Library, InMemoryLibrary
@@ -11,7 +11,6 @@ from src.core.search_engine import HybridSearchEngine, MilvusSearchEngine, Elast
 from src.core.embedder import SparseEmbedder, DenseEmbedder, BGEM3Embedder, AutoModelEmbedder
 from src.core.manager import Manager
 from src.core.document import Document
-from src.core.filter import Filter
 from typing import Iterator
 import sys
 
@@ -49,7 +48,7 @@ class SearchAppEvaluator:
 if __name__ == "__main__":
     DOC_CLS = Document.from_dataset(DATASET)  # Default document class based on dataset
     FILT_CLS = Filter.from_dataset(DATASET)  # Default filter class based on dataset
-    dataloader = DataLoader.from_default(DATASET)
+    dataloader = Dataset.from_config(DATASET)
     library: Library = InMemoryLibrary()
     sparse_embedder: SparseEmbedder = BGEM3Embedder(model_name=SPARSE_EMBEDDER)
     dense_embedder: DenseEmbedder = AutoModelEmbedder(model_name=DENSE_EMBEDDER)

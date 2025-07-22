@@ -11,7 +11,7 @@ import types
 from sentence_transformers import SentenceTransformer
 
 # Import core components
-from src.core.document import Document, NCLDocument, LitSearchDocument, Info, Field, FieldType
+from src.core.document import Document, NCLDocument, LitSearchDocument, Info, Entry, EntryType
 from src.core.filter import Filter, NCLFilter, LitSearchFilter
 from src.core.chunker import BaseChunker, LengthChunker, SentenceChunker, ChunkerMetaData
 from src.core.embedder import DenseEmbedder, SparseEmbedder
@@ -22,7 +22,7 @@ from src.core.library import InMemoryLibrary
 from src.core.manager import Manager
 from src.core.reranker import IdentityReranker
 from src.core.router import SimpleRouter
-from src.core.data import DataLoader
+from src.core.dataset import Dataset
 from src.run.app import SearchApp
 from src.run.factory import AppFactory
 
@@ -92,7 +92,7 @@ class MockSparseEmbedder(SparseEmbedder):
         return self._dimension
 
 
-class MockDataLoader(DataLoader):
+class MockDataLoader(Dataset):
     """
     Mock data loader that generates fake documents for testing.
     """

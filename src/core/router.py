@@ -1,5 +1,5 @@
-from src.core.search_engine import Filter, SearchSpec
-from typing import List
+from src.core.search_engine import SearchSpec
+from typing import List, Dict
 from src.core.schema import RouterConfig
 from src.core.search_engine import SearchEngine
 
@@ -11,7 +11,7 @@ class BaseRouter:
         """
         self.specs: None
 
-    def route(self, filter: Filter) -> int: 
+    def route(self, filter: Dict[str, List[str]]) -> int: 
         """
         Routes the filter to the appropriate search specification based on the filter criteria.
         """
@@ -42,11 +42,11 @@ class BaseRouter:
             return SimpleRouter()
         
 class SimpleRouter(BaseRouter): 
-    def route(self, filter: Filter) -> int:
+    def route(self, filter: Dict[str, List[str]]) -> int:
         return 0
         
 class SparsityRouter(BaseRouter):
-    def route(self, filter: Filter) -> int:
+    def route(self, filter: Dict[str, List[str]]) -> int:
         """
         Routes the filter to the first search specification that matches the filter's sparsity criteria.
         """

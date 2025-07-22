@@ -46,6 +46,17 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+@app.get("/api/{dataset}/channel")
+def get_channels(dataset: str):
+    try:
+        if dataset == 'ncl':
+            return ["abstract_chinese", "abstract_english"]
+        elif dataset == 'litsearch':
+            return ["abstract_chinese", "abstract_english"]
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Dataset not found")
+
+
 @app.get("/app_state/apps")
 def list_apps():
     return app_state.list_ids()
