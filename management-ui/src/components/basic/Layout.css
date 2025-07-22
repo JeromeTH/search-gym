@@ -3,6 +3,20 @@
     height: 100vh;
     overflow: hidden;
   }
+
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+  
+  .card-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1rem;
+  }
+  
   
   /* ⬇️ This determines sidebar size, not Sidebar itself */
   .sidebar-container {

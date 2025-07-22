@@ -1,0 +1,16 @@
+.base-card {
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 16px;
+    background: white;
+    transition: box-shadow 0.2s ease;
+    cursor: pointer;
+  }
+  .base-card:hover {
+    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+  }
+  .base-card .description {
+    font-size: 0.9rem;
+    color: #555;
+  }
+  

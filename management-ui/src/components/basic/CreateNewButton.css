@@ -1,0 +1,13 @@
+.create-new-button {
+    background-color: #2ea44f;
+    color: white;
+    padding: 8px 16px;
+    border-radius: 6px;
+    border: none;
+    font-weight: bold;
+    cursor: pointer;
+  }
+  .create-new-button:hover {
+    background-color: #22863a;
+  }
+  

@@ -1,7 +1,17 @@
-import type { AppConfig } from "../types/app";
+import type { AppConfig, DatasetConfig } from "../types/app";
 
-const BASE_URL = "http://localhost:8001";
+const BASE_URL = "http://0.0.0.0:8001";
 
+export async function getDefaultDataset(): Promise<DatasetConfig> {
+  try {
+    const res = await fetch(`${BASE_URL}/defaults/dataset`);
+    if (!res.ok) throw new Error("Server responded with error");
+    return await res.json();
+  } catch (err) {
+    console.error("Fetch failed:", err);
+    throw new Error("Could not connect to backend. Is it running?");
+  }
+}
 export async function listApps(): Promise<string[]> {
   const res = await fetch(`${BASE_URL}/model/apps`);
   if (!res.ok) throw new Error("Failed to fetch apps");

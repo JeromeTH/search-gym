@@ -3,18 +3,20 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import ValidationError
 from src.core.schema import AppConfig
 from contextlib import asynccontextmanager
-from adaptor import assemble_app_config 
+from src.run.adaptor import assemble_app_config 
 from typing import Dict, Any, List
 from src.run.state import BaseState
 from src.core.vector_set import BaseVectorSet
-from src.core.schema import VectorSetConfig, AppConfig
+from src.core.dataset import Dataset
+from src.core.schema import VectorSetConfig, AppConfig, DatasetConfig
 from src.core.app import App
-from src.core.filter import Filter
+from src.const.dataset import NCL
 import yaml
 import os
-app = FastAPI()
+api = FastAPI()
 app_config = yaml.safe_load(open("config/app.yml", "r", encoding="utf-8"))
 vector_set_config = yaml.safe_load(open("config/vector_set.yml", "r", encoding="utf-8"))
+dataset_config = yaml.safe_load(open("config/dataset.yml", "r", encoding="utf-8"))
 
 #load --> activate
 app_state = BaseState[AppConfig, App](
@@ -22,13 +24,33 @@ app_state = BaseState[AppConfig, App](
     obj_cls=App,
     config_dir=app_config["config_path"]
 )
+
 vector_set_state = BaseState[VectorSetConfig, BaseVectorSet](
     config_cls=VectorSetConfig,
     obj_cls=BaseVectorSet,
     config_dir=vector_set_config["config_path"]
 ) 
 
-app.add_middleware(
+dataset_state = BaseState[DatasetConfig, Dataset](
+    config_cls=DatasetConfig,
+    obj_cls=Dataset,
+    config_dir=dataset_config["config_path"]
+)
+
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup logic
+    app_state.load_all_configs()
+    vector_set_state.load_all_configs()
+    dataset_state.load_all_configs()
+    yield
+    # Shutdown logic (if needed)
+
+api = FastAPI(lifespan=lifespan)
+
+api.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_credentials=True,
@@ -36,39 +58,34 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    # Startup logic
-    app_state.load_all_configs()
-    vector_set_state.load_all_configs()
-    yield
-    # Shutdown logic (if needed)
+@api.get("/defaults/dataset", response_model=DatasetConfig)
+def get_default_dataset():
+    return NCL
 
-app = FastAPI(lifespan=lifespan)
 
-@app.get("/api/{dataset}/channel")
+@api.get("/api/{dataset}/channel")
 def get_channels(dataset: str):
+    """
+    Input: id of the dataset
+    Output: list of channels for the dataset
+    """
     try:
-        if dataset == 'ncl':
-            return ["abstract_chinese", "abstract_english"]
-        elif dataset == 'litsearch':
-            return ["abstract_chinese", "abstract_english"]
+        dataset_state.get_config(dataset).channels
     except KeyError:
         raise HTTPException(status_code=404, detail="Dataset not found")
 
-
-@app.get("/app_state/apps")
+@api.get("/app_state/apps")
 def list_apps():
     return app_state.list_ids()
 
-@app.get("/app_state/app/{id}")
+@api.get("/app_state/app/{id}")
 def get_app_metadata(id: str):
     try:
         return app_state.get_config(id)
     except KeyError:
         raise HTTPException(status_code=404, detail="App not found")
 
-@app.post("/app_state/app")
+@api.post("/app_state/app")
 def create_app(form: Dict[str, Any]):
     try:
         config = assemble_app_config(form)
@@ -77,7 +94,7 @@ def create_app(form: Dict[str, Any]):
     except ValidationError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
-@app.post("/app_state/activate/{name}")
+@api.post("/app_state/activate/{name}")
 def activate_app(name: str):
     try:
         app_state.activate_app(name)
@@ -85,7 +102,7 @@ def activate_app(name: str):
     except KeyError:
         raise HTTPException(status_code=404, detail="App not found")
 
-@app.delete("/app_state/app/{name}")
+@api.delete("/app_state/app/{name}")
 def delete_app(name: str):
     try:
         app_state.remove_app(name)
@@ -93,7 +110,7 @@ def delete_app(name: str):
     except KeyError:
         raise HTTPException(status_code=404, detail="App not found")
 
-@app.get("/search/{app_id}")
+@api.get("/search/{app_id}")
 def search(app_id, query, filt):
     try:
         app = app_state.get_obj(app_id)
