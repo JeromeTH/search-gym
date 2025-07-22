@@ -1,20 +1,16 @@
 from src.core.llm import Agent
-from src.core.embedder import DenseEmbedder, SparseEmbedder, AutoModelEmbedder, BGEM3Embedder, MilvusBGEM3Embedder
 from src.core.dataset import Dataset
 from src.core.dataloader import DataLoader
 from src.core.prompt import PromptBuilder
 from src.core.document import Document
-from src.core.search_engine import SearchEngine, Filter, MilvusSearchEngine, ElasticSearchEngine
-from src.core.library import Library, InMemoryLibrary, FilesLibrary
+from src.core.search_engine import SearchEngine
+from src.core.library import InMemoryLibrary
 from src.core.schema import AppConfig, DatasetConfig
 from src.core.router import BaseRouter
-from src.core.reranker import BaseReranker, IdentityReranker
+from src.core.reranker import BaseReranker
 from src.utils.logging import setup_logger
-from scipy.sparse import csr_array
 from typing import List, Dict
-import sys
 from src.core.manager import Manager
-from src.core.reranker import IdentityReranker
 from src.core.interface import StoredObj
 from tqdm import tqdm
 import logging
@@ -53,9 +49,9 @@ class App(StoredObj):
         logger.info(f"Setting up application with max_files={self.max_files}")
         self.manager.setup()
         self.count = 0
-        for datasets in self.datasets: 
-            logger.info(f"setting up dataloader for {datasets.config().id}: {datasets.config().name}")
-            self.insert_from_dataset(datasets)
+        for dataset in self.datasets: 
+            logger.info(f"setting up dataloader for {dataset.config().id}: {dataset.config().name}")
+            self.insert_from_dataset(dataset)
         
     
     def search(
@@ -78,8 +74,8 @@ class App(StoredObj):
     
     @classmethod
     def from_config(cls, config: AppConfig) -> 'App':
-        dataset_configs: List[DatasetConfig] = list({engine.get_dataset() for engine in config.search_engines})
-        datasets: List[Dataset] = [Dataset.from_config(c) for c in dataset_configs]
+        dataset_configs: Dict[str, DatasetConfig] = {d.id: d for engine in config.search_engines for d in [engine.get_dataset()]}
+        datasets: List[Dataset] = [Dataset.from_config(c) for c in dataset_configs.values()]
         search_engines = [SearchEngine.from_config(sconfig) for sconfig in config.search_engines]
         router = BaseRouter.from_config(config.router)
         reranker = BaseReranker.from_config(config.reranker)

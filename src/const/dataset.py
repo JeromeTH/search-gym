@@ -10,8 +10,8 @@ NCL_METADATA: List[EntryMeta] = [
     EntryMeta(name="id", type=EntryType.STRING, max_length=20),
     EntryMeta(name="year", type=EntryType.INTEGER, max_length=4),
     EntryMeta(name="category", type=EntryType.STRING, max_length=64),
-    EntryMeta(name="link", type=EntryType.STRING, max_length=256),
-    EntryMeta(name="keywords", type=EntryType.STRING, max_length=256),
+    EntryMeta(name="link", type=EntryType.STRING, max_length=512),
+    EntryMeta(name="keywords", type=EntryType.STRING, max_length=512),
     EntryMeta(name="school_chinese", type=EntryType.STRING, max_length=128),
     EntryMeta(name="school_english", type=EntryType.STRING, max_length=128),
     EntryMeta(name="dept_chinese", type=EntryType.STRING, max_length=128),
@@ -24,10 +24,10 @@ NCL_METADATA: List[EntryMeta] = [
 
 # --- Channel fields based on NCLDocument.channels ---
 NCL_CHANNELS: List[EntryMeta] = [
-    EntryMeta(name="abstract_chinese", type=EntryType.STRING, max_length=1024),
-    EntryMeta(name="abstract_english", type=EntryType.STRING, max_length=1024),
-    EntryMeta(name="title_chinese", type=EntryType.STRING, max_length=256),
-    EntryMeta(name="title_english", type=EntryType.STRING, max_length=256),
+    EntryMeta(name="abstract_chinese", type=EntryType.STRING, max_length=4096),
+    EntryMeta(name="abstract_english", type=EntryType.STRING, max_length=4096),
+    EntryMeta(name="title_chinese", type=EntryType.STRING, max_length=512),
+    EntryMeta(name="title_english", type=EntryType.STRING, max_length=512),
 ]
 
 NCL_FILTERS: List[Filter] = [

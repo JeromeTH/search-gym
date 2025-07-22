@@ -1,10 +1,12 @@
 from typing import List, Optional, Union, Literal
 from src.core.interface import StoredConfig
-from pydantic import BaseModel, model_validator
+from pydantic import BaseModel, model_validator, ConfigDict
 from enum import Enum
 from pymilvus import DataType
 from typing import Any, Dict, Type, Self
 
+class StaticBaseModel(BaseModel): 
+    model_config = ConfigDict(frozen=True)
 
 class EntryType(str, Enum):
     STRING = "str"
@@ -36,7 +38,7 @@ class EntryType(str, Enum):
             "bool": DataType.BOOL
         }[self.value]
 
-class EntryMeta(BaseModel):
+class EntryMeta(StaticBaseModel):
     """
     Metadata for a field in a document, used to define its type and constraints.
     
@@ -52,7 +54,7 @@ class EntryMeta(BaseModel):
     is_required: bool = True
 
 # --- Field object used in both content and metadata ---
-class Entry(BaseModel):
+class Entry(StaticBaseModel):
     """
     A representation of a field in a document, used in both content and metadata.
 
@@ -66,7 +68,7 @@ class Entry(BaseModel):
     contents: List[Any] = []
 
 
-class Filter(BaseModel): 
+class Filter(StaticBaseModel): 
     name: str
     filter_type: Literal["filter", "must"]
     
@@ -87,7 +89,7 @@ class DatasetConfig(StoredConfig):
         if not any(f.name == "id" for f in self.filters): 
             raise ValueError("Dataset must have an 'id' filter.")
         for f in self.filters: 
-            if f.name is not "id" and f.name not in [m.name for m in self.metadata]: 
+            if f.name != "id" and f.name not in [m.name for m in self.metadata]: 
                 raise ValueError(f"Filter {f.name} not found in metadata fields.")
         return self
     
@@ -107,20 +109,20 @@ class DatasetConfig(StoredConfig):
 
 # ---------------- Router and Reranker ----------------
 
-class RouterConfig(BaseModel):
+class RouterConfig(StaticBaseModel):
     type: Literal["simple"]
 
-class RerankerConfig(BaseModel):
+class RerankerConfig(StaticBaseModel):
     type: Literal["identity", "auto_model"]
 
 # ---------------- Embedder ----------------
 
-class AutoModelEmbedderConfig(BaseModel):
+class AutoModelEmbedderConfig(StaticBaseModel):
     type: Literal["auto_model"]
     embedding_type: Literal["dense"]
     model_name: str
 
-class BGEEmbedderConfig(BaseModel):
+class BGEEmbedderConfig(StaticBaseModel):
     type: Literal["bge"]
     embedding_type: Literal["sparse"]
     model_name: str
@@ -128,12 +130,12 @@ class BGEEmbedderConfig(BaseModel):
 EmbedderConfig = Union[AutoModelEmbedderConfig, BGEEmbedderConfig]
 
 # ---------------- Chunker ----------------
-class LengthChunkerConfig(BaseModel):
+class LengthChunkerConfig(StaticBaseModel):
     type: Literal["length_chunker"]
     chunk_size: int = 512
     overlap: int = 50
 
-class SentenceChunkerConfig(BaseModel):
+class SentenceChunkerConfig(StaticBaseModel):
     type: Literal["sentence_chunker"]
     language: Literal["en", "zh"]
 
@@ -150,13 +152,13 @@ class VectorSetConfig(StoredConfig):
 
 # ---------------- Search Engine Configs ----------------
 
-class MilvusConfig(BaseModel):
+class MilvusConfig(StaticBaseModel):
     type: Literal["milvus"]
     vector_set: VectorSetConfig
     def get_dataset(self) -> DatasetConfig:
         return self.vector_set.dataset
 
-class HybridMilvusConfig(BaseModel):
+class HybridMilvusConfig(StaticBaseModel):
     type: Literal["hybrid_milvus"]
     sparse_vector_set: VectorSetConfig
     dense_vector_set: VectorSetConfig
@@ -179,7 +181,7 @@ class HybridMilvusConfig(BaseModel):
     def get_dataset(self) -> DatasetConfig:
         return self.dense_vector_set.dataset
 
-class ElasticSearchConfig(BaseModel):
+class ElasticSearchConfig(StaticBaseModel):
     type: Literal["elasticsearch"]
     dataset: DatasetConfig
     es_host: str
@@ -189,7 +191,7 @@ class ElasticSearchConfig(BaseModel):
         return self.dataset
 
 
-class SequentialConfig(BaseModel):
+class SequentialConfig(StaticBaseModel):
     type: Literal["sequential"]
     engines: List[Union[MilvusConfig, ElasticSearchConfig, HybridMilvusConfig]]
 

@@ -35,11 +35,11 @@ SPARSE_VECTOR_SETS = [
     vs for vs in VECTOR_SETS if vs.embedder.embedding_type == "sparse"
 ]
 
-DEFAULT: Dict[str, VectorSetConfig] = {
+DEFAULT_VECTOR_SETS: Dict[str, VectorSetConfig] = {
     "ncl_dense_vs": VectorSetConfig(
     id='ncl_dense_vs',
     root=f"_tests/storage/vector_set/ncl_dense_vs", 
-    dataset="ncl", 
+    dataset=NCL, 
     channel="abstract_chinese", 
     chunker=LENGTH_CHUNKER, 
     embedder=AUTO_MODEL_EMBEDDER

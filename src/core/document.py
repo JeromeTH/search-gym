@@ -51,12 +51,12 @@ class BaseDocument(BaseModel, Document):
         """
         return self.dataset.id
 
-    def _load_entries(self, entry_metas: List[EntryMeta]) -> Dict[str, Entry]:
+    def _load_entries(self, entry_metas: List[EntryMeta], crop = False) -> Dict[str, Entry]:
         return {
             meta.name: 
             Entry(
-                meta, 
-                [meta.type.to_python_type() 
+                meta = meta, 
+                contents = [meta.type.to_python_type() 
                  (ensure(s, meta.max_length)) 
                  for s in self.data[meta.name]]
                 )
@@ -70,7 +70,7 @@ class BaseDocument(BaseModel, Document):
         return self
 
     def key(self) -> str:
-        return self.data.id[0]
+        return self.data['id'][0]
 
     def metadata(self) -> Dict[str, Entry]:
         return self._load_entries(self.dataset.metadata)

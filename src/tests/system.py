@@ -5,7 +5,7 @@ TODO:
 - Resource trace
 """
 
-from src.const.app import APPS
+from src.const.app import DEFAULT_APPS
 from src.run.state import BaseState
 from src.core.app import App
 from pprint import pprint
@@ -21,25 +21,25 @@ app_state = BaseState[AppConfig, App](
     config_dir="_tests/configs/app"
 )
 
-def filter_app(app_config: AppConfig) -> bool:
-    return (
-        len(app_config.search_engines) > 0 and
-        app_config.router.type == "simple" and
-        app_config.reranker.type == "identity" and
-        app_config.search_engines[0].type == "milvus" and
-        app_config.search_engines[0].vector_set.chunker.type == "length_chunker" and
-        app_config.search_engines[0].vector_set.embedder.type == "auto_model" and 
-        app_config.search_engines[0].get_dataset().name == "ncl"
-    )
+# def filter_app(app_config: AppConfig) -> bool:
+#     return (
+#         len(app_config.search_engines) > 0 and
+#         app_config.router.type == "simple" and
+#         app_config.reranker.type == "identity" and
+#         app_config.search_engines[0].type == "milvus" and
+#         app_config.search_engines[0].vector_set.chunker.type == "length_chunker" and
+#         app_config.search_engines[0].vector_set.embedder.type == "auto_model" and 
+#         app_config.search_engines[0].get_dataset().name == "ncl"
+#     )
 
-filtered_apps = [conf for conf in APPS if filter_app(conf)]
+# filtered_apps = [conf for conf in APPS if filter_app(conf)]
 
-for app_config in filtered_apps:
-    app_state.register(app_config)
-    logger.info(f"Registering app: {app_config.name} with ID {app_config.id}")
+# for app_config in filtered_apps:
+#     app_state.register(app_config)
+#     logger.info(f"Registering app: {app_config.name} with ID {app_config.id}")
 
 # activate 
-
+app_state.register(DEFAULT_APPS["ncl_milvus_simple_identity"])
 registered_apps = app_state.list_ids()
 target_app_id = registered_apps[0]
 logger.info(f"Activating app: \n {app_state.get_config(target_app_id)}")

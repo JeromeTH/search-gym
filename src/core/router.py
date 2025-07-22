@@ -1,4 +1,4 @@
-from src.core.search_engine import Filter, SearchSpec
+from src.core.search_engine import SearchSpec
 from typing import List, Dict
 from src.core.schema import RouterConfig
 from src.core.search_engine import SearchEngine

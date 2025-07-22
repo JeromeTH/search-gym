@@ -44,7 +44,7 @@ class BaseVectorSet(StoredObj):
         for i in tqdm(range(0, len(need_insert), BATCH_SIZE), desc="Inserting documents"):
             batch = need_insert[i:i + BATCH_SIZE]
             self.upsert(batch)
-        self.save()
+        if len(need_insert) > 0: self.save()
 
     def save(self):
         logger.info(f"Saving vector set to {self.root}")

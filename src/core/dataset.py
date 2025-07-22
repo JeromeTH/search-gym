@@ -55,9 +55,15 @@ class JsonlDataset(Dataset):
             if isinstance(value, str):
                 result[key] = [value]
             elif isinstance(value, list):
-                result[key] = value
+                result[key] = [str(v) for v in value]
             else:
                 raise ValueError(f"Unsupported data type for key '{key}': {type(value)}")
+            
+            # Ensure the length of each list matches the dataset's entry meta max_length
+            max_len = self.dataset.get_entry(key).max_length
+            if max_len is not None:
+                result[key] = [v[:max_len] for v in result[key]]
+                
         return result
 
     def stream(self) -> Iterator[Document]:

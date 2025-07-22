@@ -1,7 +1,7 @@
 from src.core.document import Document
 from typing import List, Dict
 from src.core.library import Library
-from src.core.search_engine import Filter, SearchEngine
+from src.core.search_engine import SearchEngine
 from src.core.router import BaseRouter
 from src.core.reranker import BaseReranker
 from collections import defaultdict
@@ -39,7 +39,7 @@ class Manager:
         for doc in docs:
             sorted_docs[doc.source()].append(doc)
         for engine in self.search_engines: 
-            engine.insert(sorted_docs[engine.config().dataset.id])
+            engine.insert(sorted_docs[engine.config().get_dataset().id])
     
     def setup(self) -> None:
         self.library.clear()

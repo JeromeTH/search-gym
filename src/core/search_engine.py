@@ -79,13 +79,13 @@ class SearchEngine(ABC):
         :return: An instance of SearchEngine.
         """
         if isinstance(config, MilvusConfig):
-            return MilvusSearchEngine.from_config(config)
+            return MilvusSearchEngine(config)
         elif isinstance(config, HybridMilvusConfig):
-            return HybridMilvusSearchEngine.from_config(config)
+            return HybridMilvusSearchEngine(config)
         elif isinstance(config, ElasticSearchConfig):
-            return ElasticSearchEngine.from_config(config)
+            return ElasticSearchEngine(config)
         elif isinstance(config, SequentialConfig):
-            return Sequential.from_config(config)
+            return Sequential(config)
         else:
             raise ValueError(f"Unknown search engine type: {config.type}. Supported types: 'milvus', 'hybrid_milvus', 'elastic_search', 'sequential'.")
         
@@ -174,6 +174,7 @@ class BaseMilvus(ABC):
     def _group_chunk_ids(self, chunk_ids: List[str]) -> List[str]:
         return list({cid.split("-")[0] for cid in chunk_ids})
 
+    @staticmethod
     def build_metadata_dict(
         docs: List[Document],
         dataset: DatasetConfig,
@@ -238,7 +239,7 @@ class HybridMilvusSearchEngine(BaseMilvus, SearchEngine):
         sparse_model = config.sparse_vector_set.embedder.model_name
         self.collection_name = (f"dense={model_config[dense_model]['alias']}_\
                                 sparse={model_config[sparse_model]['alias']}_\
-                                dataset={self.dataset}_\
+                                dataset={self.dataset.name}_\
                                 channel={self.channel}")
         
         fields = self._get_metadata_fields(self.dataset)
@@ -304,12 +305,12 @@ class HybridMilvusSearchEngine(BaseMilvus, SearchEngine):
         dense_embeddings = self.dense_vector_set.retrieve(ids)  # Dict[str, List[List[float]]]
         sparse_embeddings = self.sparse_vector_set.retrieve(ids)  # Dict[str, csr_array]
 
+        chunk_sizes: Dict[str, int] = {doc_id: len(dense_embeddings[doc_id]) for doc_id in ids}
         insert_dict = {
-            "pk": [f"{doc_id}-{i}" for doc_id in ids for i in range(len(dense_embeddings[doc_id]))],
+            "pk": [f"{doc_id}-{i}" for doc_id in ids for i in range(chunk_sizes[doc_id])],
             "dense_vector": reduce(lambda x, y: x + y, [dense_embeddings[doc_id] for doc_id in ids], []),
             "sparse_vector": vstack([sparse_embeddings[doc_id] for doc_id in ids])
         }
-        chunk_sizes: Dict[str, int] = {doc_id: len(dense_embeddings[doc_id]) for doc_id in ids}
         insert_dict.update(
             self.build_metadata_dict(new_docs, self.dataset, chunk_sizes)
         )
@@ -342,7 +343,7 @@ class MilvusSearchEngine(BaseMilvus, SearchEngine):
     def __init__(
         self,
         config: MilvusConfig,
-        force_rebuild: bool = False,
+        force_rebuild: bool = True,
     ):
         self.engine_config = config
         self.vector_set = BaseVectorSet.from_config(config.vector_set)
@@ -356,7 +357,7 @@ class MilvusSearchEngine(BaseMilvus, SearchEngine):
         model = config.vector_set.embedder.model_name
         self.collection_name = (
             f"{model_config[model]['alias']}_"
-            f"{self.dataset}_{self.channel}_collection"
+            f"{self.dataset.name}_{self.channel}_collection"
         )
         fields = self._get_metadata_fields(self.dataset)
 
@@ -444,7 +445,7 @@ class MilvusSearchEngine(BaseMilvus, SearchEngine):
 
     def search(self, query: str, filter: Dict[str, List[str]], limit: int = 100) -> List[str]:
         query_vector = self.embed_query(query)
-        expr = self._get_query_expr(filter)
+        expr = self._get_query_expr(self.dataset, filter)
         results = self.operator.search(
             query_vector=query_vector,
             anns_field=self.vector_type + "_vector",
@@ -463,7 +464,7 @@ class MilvusSearchEngine(BaseMilvus, SearchEngine):
     
     def spec(self) -> SearchSpec:
         return SearchSpec(name="milvus_search_engine", optimal_for="weak")
-
+    
 
 
 class ElasticSearchEngine(SearchEngine):
