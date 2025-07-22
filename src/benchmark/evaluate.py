@@ -48,7 +48,7 @@ class SearchAppEvaluator:
 if __name__ == "__main__":
     DOC_CLS = Document.from_dataset(DATASET)  # Default document class based on dataset
     FILT_CLS = Filter.from_dataset(DATASET)  # Default filter class based on dataset
-    dataloader = Dataset.from_default(DATASET)
+    dataloader = Dataset.from_config(DATASET)
     library: Library = InMemoryLibrary()
     sparse_embedder: SparseEmbedder = BGEM3Embedder(model_name=SPARSE_EMBEDDER)
     dense_embedder: DenseEmbedder = AutoModelEmbedder(model_name=DENSE_EMBEDDER)

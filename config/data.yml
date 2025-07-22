@@ -2,10 +2,13 @@ arxiv:
   root: /home/jth264/.cache/kagglehub/datasets/Cornell-University/arxiv/versions/235/arxiv-metadata-oai-snapshot.json
   
 ncl: 
-  root: /home/share/data/ncl_json_one_year
+  root: /home/share/data/ncl_json_processed
 
 history: 
   root: data/history
 
 root: 
   root: /home/share/data
+
+litsearch: 
+  root: /home/share/data/litsearch

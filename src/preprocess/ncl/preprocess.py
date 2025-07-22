@@ -1,8 +1,8 @@
 # scripts/preprocess_ncl.py
 
-import os, json
-import pandas as pd
-from pathlib import Path
+import os
+import json
+import argparse
 from typing import Optional
 
 def split_or_empty(val: Optional[str]) -> list[str]:
@@ -38,5 +38,10 @@ def preprocess_ncl_file(input_path: str, output_path: str):
             json.dump(processed, f_out, ensure_ascii=False)
             f_out.write('\n')
 
-# Usage example
-# preprocess_ncl_file("data/ncl/raw/112.jsonl", "data/ncl/processed/112.jsonl")
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Preprocess NCL thesis metadata file")
+    parser.add_argument("input_path", type=str, help="Path to input JSONL file")
+    parser.add_argument("output_path", type=str, help="Path to output JSONL file")
+    args = parser.parse_args()
+
+    preprocess_ncl_file(args.input_path, args.output_path)

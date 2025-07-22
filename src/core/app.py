@@ -79,7 +79,7 @@ class App(StoredObj):
     @classmethod
     def from_config(cls, config: AppConfig) -> 'App':
         dataset_configs: List[DatasetConfig] = list({engine.get_dataset() for engine in config.search_engines})
-        datasets: List[Dataset] = [Dataset.from_default(c) for c in dataset_configs]
+        datasets: List[Dataset] = [Dataset.from_config(c) for c in dataset_configs]
         search_engines = [SearchEngine.from_config(sconfig) for sconfig in config.search_engines]
         router = BaseRouter.from_config(config.router)
         reranker = BaseReranker.from_config(config.reranker)

@@ -1,4 +1,4 @@
-from src.core.document import Document, NCLDocument, Info, LitSearchDocument, BaseDocument
+from src.core.document import Document, BaseDocument
 import os
 from typing import Any, Iterator, List, Dict
 import json
@@ -29,7 +29,7 @@ class Dataset(StoredObj):
         pass
 
     @classmethod
-    def from_default(cls, dataset: DatasetConfig) -> "Dataset":
+    def from_config(cls, dataset: DatasetConfig) -> "Dataset":
         """
         Factory method to return a dataset-specific DataLoader.
         """
@@ -68,7 +68,7 @@ class JsonlDataset(Dataset):
                         continue
                     data: Dict[str, Any] = json.loads(line)
                     processed_data = self._process_data(data)
-                    yield BaseDocument(self.dataset, processed_data)
+                    yield BaseDocument(dataset = self.dataset, data = processed_data)
             
     def setup(self):
         """
@@ -78,7 +78,7 @@ class JsonlDataset(Dataset):
         if not os.path.exists(self.dataset.root):
             raise FileNotFoundError(f"Dataset root directory {self.dataset.root} does not exist.")
         
-        
+
     def config(self) -> DatasetConfig:
         """
         Returns the dataset configuration.

@@ -1,4 +1,3 @@
-from src.core.document import Document
 from typing import List, Any, Optional
 import hashlib
 
@@ -47,17 +46,3 @@ def coalesce(*args):
         if result is not None:
             return result
     return None
-    
-def get_first_content(doc: Document) -> str:
-        """
-        Helper method to extract the first content from a Document.
-        If the document has no content, returns an empty string.
-        """
-        if doc.channels():
-            first_field = next(iter(doc.channels().values()))
-            if first_field.contents:
-                return first_field.contents[0]
-            else: 
-                #first field exists but is empty
-                return ""
-        return ""

@@ -87,7 +87,7 @@ class DatasetConfig(StoredConfig):
         if not any(f.name == "id" for f in self.filters): 
             raise ValueError("Dataset must have an 'id' filter.")
         for f in self.filters: 
-            if f.name is not "id" and f.name not in self.metadata: 
+            if f.name is not "id" and f.name not in [m.name for m in self.metadata]: 
                 raise ValueError(f"Filter {f.name} not found in metadata fields.")
         return self
     

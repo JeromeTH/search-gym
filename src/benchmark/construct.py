@@ -24,7 +24,7 @@ def generate_benchmarks(documents: List[Document], prompt: str, llm: Agent) -> L
 if __name__ == "__main__":
     llm = Agent.from_vllm(CHATBOT)
     PROMPT = "請為以下文檔生成一個問題，該問題的答案應該是文檔的摘要。請給問體本身就好。"
-    dataloader = Dataset.from_default(DATASET)
+    dataloader = Dataset.from_config(DATASET)
     sampler: Sampler = PrefixSampler(dataloader, max_samples = 100)
     documents = [doc for doc in sampler.sample()]
     benchmarks = generate_benchmarks(documents, PROMPT, llm)

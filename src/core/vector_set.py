@@ -36,7 +36,7 @@ class BaseVectorSet(StoredObj):
 
     def setup(self):
         logger.info(f"Setting up vector set at {self.root}")
-        dataloader = Dataset.from_default(self._config.dataset)
+        dataloader = Dataset.from_config(self._config.dataset)
         need_insert = [doc for doc in dataloader.stream() if not self.has(doc.key())]
         BATCH_SIZE = 64
         logger.info(f"Existing vector set size: {self.size()}")

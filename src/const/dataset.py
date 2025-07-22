@@ -31,6 +31,7 @@ NCL_CHANNELS: List[EntryMeta] = [
 ]
 
 NCL_FILTERS: List[Filter] = [
+    Filter(name="id", filter_type="filter"),
     Filter(name="year", filter_type="filter"),
     Filter(name="category", filter_type="filter"),
     Filter(name="school_chinese", filter_type="filter"),
@@ -71,6 +72,7 @@ LITSEARCH_CHANNELS: List[EntryMeta] = [
 ]
 
 LITSEARCH_FILTERS: List[Filter] = [
+    Filter(name="id", filter_type="filter"),
     Filter(name="year", filter_type="filter"),
     Filter(name="venue", filter_type="filter"),
     Filter(name="authors", filter_type="must"),

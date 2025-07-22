@@ -41,7 +41,7 @@ class Document(ABC):
         """
         pass
         
-class BaseDocument(Document, BaseModel): 
+class BaseDocument(BaseModel, Document): 
     dataset: DatasetConfig
     data: Dict[str, List[str]]
 
