@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { getChannels } from "../../lib/api";
+import { getDataset } from "../../lib/api";
 
 interface ChannelSelectorProps {
   datasetId: string;
@@ -12,16 +12,14 @@ export default function ChannelSelector({ datasetId, value, onChange }: ChannelS
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+
   useEffect(() => {
-    if (!datasetId) {
-      setChannels([]);
-      return;
-    }
+    if (!datasetId) return;
 
     setLoading(true);
-    getChannels(datasetId)
-      .then((chs) => {
-        setChannels(chs);
+    getDataset(datasetId)
+      .then((dataset) => {
+        setChannels(dataset.channels.map((entry) => entry.name));
         setError(null);
       })
       .catch((err) => {

@@ -24,8 +24,17 @@ export async function getAllDatasets(): Promise<DatasetConfig[]> {
   return await res.json();
 }
 
-export async function createObject<T>(endpoint: string, config: T): Promise<T> {
-  const res = await fetch(`${BASE_URL}/${endpoint}/create`, {
+export async function getDataset(id: string): Promise<DatasetConfig> {
+  const res = await fetch(`${BASE_URL}/datasets/${id}`);
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Failed to fetch dataset: ${res.status} ${errText}`);
+  }
+  return await res.json();
+}
+
+export async function register<T>(endpoint: string, config: T): Promise<T> {
+  const res = await fetch(`${BASE_URL}/${endpoint}/register`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(config),
@@ -36,26 +45,6 @@ export async function createObject<T>(endpoint: string, config: T): Promise<T> {
     throw new Error(`Backend error: ${res.status} ${errText}`);
   }
   return await res.json();
-}
-
-
-export async function getDatasets(): Promise<DatasetConfig[]> {
-  const res = await fetch(`${BASE_URL}/api/datasets`);
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Failed to fetch datasets: ${res.status} ${errText}`);
-  }
-  return await res.json();
-}
-
-
-export async function getChannels(datasetId: string): Promise<string[]> {
-  const res = await fetch(`${BASE_URL}/api/${datasetId}/channel`);
-  if (!res.ok) {
-    const errText = await res.text();
-    throw new Error(`Failed to fetch channels: ${res.status} ${errText}`);
-  }
-  return res.json();  // Now directly returns string[]
 }
 
 // src/lib/api.ts

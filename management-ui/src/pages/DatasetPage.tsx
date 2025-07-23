@@ -5,10 +5,9 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { getAllDatasets } from "../lib/api";
 
-
-
 export default function DatasetPage() {
   const [datasets, setDatasets] = useState<DatasetConfig[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
     getAllDatasets()
@@ -19,8 +18,11 @@ export default function DatasetPage() {
       });
   }, []);
 
-  const navigate = useNavigate();
   const handleCreateNew = () => navigate("/datasets/new");
+
+  const handleCardClick = (id: string) => {
+    navigate(`/datasets/${id}`);
+  };
 
   return (
     <div>
@@ -29,12 +31,15 @@ export default function DatasetPage() {
         <CreateNewButton onClick={handleCreateNew} />
       </div>
       <div className="card-grid">
-        {datasets.map(ds => (
-          <BaseCard key={ds.name} title={ds.name} description={ds.description}>
-            <p><strong>Format:</strong> {ds.format}</p>
-            <p><strong>Fields:</strong> {ds.metadata.length}</p>
-            <p><strong>Channels:</strong> {ds.channels.length}</p>
-          </BaseCard>
+        {datasets.map((ds) => (
+          <div key={ds.id ?? ds.name} onClick={() => handleCardClick(ds.id!)} style={{ cursor: "pointer" }}>
+            <BaseCard title={ds.name} description={ds.description}>
+              <p><strong>ID:</strong> {ds.id}</p>
+              <p><strong>Format:</strong> {ds.format}</p>
+              <p><strong>Fields:</strong> {ds.metadata.length}</p>
+              <p><strong>Channels:</strong> {ds.channels.length}</p>
+            </BaseCard>
+          </div>
         ))}
       </div>
     </div>

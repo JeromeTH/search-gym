@@ -8,8 +8,9 @@ import VectorSetPage from "./pages/VectorSetPage";
 import DatasetForm from "./components/creation/DatasetForm";
 import VectorSetForm from "./components/creation/VectorSetForm";
 import AppForm from "./components/creation/AppForm";
+import DatasetUpdate from "./components/update/DatasetUpdate";
 
-import {createObject} from "./lib/api";
+import { register } from "./lib/api";
 import { useNavigateAfter } from "./lib/navigation";
 
 function AppRoutes() {
@@ -20,25 +21,30 @@ function AppRoutes() {
       <Route path="/apps" element={<Apps />} />
       <Route path="/datasets" element={<DatasetPage />} />
       <Route path="/vector-sets" element={<VectorSetPage />} />
+      <Route path="/datasets/:id" element={<DatasetUpdate onSubmit={
+        useNavigateAfter((config) => register("dataset", config), "/datasets")
+      } />
+      }
+      />
 
       {/* Form pages */}
       <Route path="/datasets/new" element={
         <DatasetForm onSubmit={
-          useNavigateAfter((config) => createObject("dataset", config), "/datasets")
-        }/>
-        } 
+          useNavigateAfter((config) => register("dataset", config), "/datasets")
+        } />
+      }
       />
       <Route path="/vector-sets/new" element={
         <VectorSetForm onSubmit={
-          useNavigateAfter((config) => createObject("vector_set", config), "/vector-sets")
-        }/>
-        } 
+          useNavigateAfter((config) => register("vector_set", config), "/vector-sets")
+        } />
+      }
       />
       <Route path="/apps/new" element={
         <AppForm onSubmit={
-          useNavigateAfter((config) => createObject("app", config), "/apps")
-        }/>
-        }
+          useNavigateAfter((config) => register("app", config), "/apps")
+        } />
+      }
       />
     </Routes>
   );

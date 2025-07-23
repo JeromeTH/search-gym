@@ -60,9 +60,38 @@ api.add_middleware(
 )
 
 #------------- default values -----------------
+
+@api.get("/datasets", response_model=List[DatasetConfig])
+def get_all_datasets():
+    """
+    Returns a list of all datasets.
+    """
+    return dataset_state.get_all_configs()
+
 @api.get("/defaults/dataset", response_model=DatasetConfig)
 def get_default_dataset():
     return NCL
+
+
+@api.post("/dataset/register")
+def register_dataset(config: Dict[str, Any]) -> DatasetConfig:
+    try:
+        dconfig: DatasetConfig = DatasetConfig.from_dict(config)
+        dataset_state.register(dconfig)
+        return dconfig
+    except ValidationError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+
+@api.get("/datasets/{id}", response_model=DatasetConfig)    
+def get_dataset(id: str):
+    """
+    Returns a specific dataset by its ID.
+    """
+    try:
+        return dataset_state.get_config(id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="Dataset not found")
 
 # ------------- default values -----------------
 @api.get("/defaults/chunker")
@@ -79,19 +108,8 @@ def get_default_embedders():
         "bge": BGE_EMBEDDER.model_dump(),
     }
 
-
-#-------------Creation logic ------------------
-@api.post("/dataset/create")
-def create_dataset(config: Dict[str, Any]) -> DatasetConfig:
-    try:
-        dconfig: DatasetConfig = DatasetConfig.from_dict(config)
-        dataset_state.register(dconfig)
-        return dconfig
-    except ValidationError as e:
-        raise HTTPException(status_code=400, detail=str(e))
-
-@api.post("/vector_set/create")
-def create_vector_set(config: Dict[str, Any]) -> VectorSetConfig:
+@api.post("/vector_set/register")
+def register_vector_set(config: Dict[str, Any]) -> VectorSetConfig:
     try:
         vconfig: VectorSetConfig = VectorSetConfig.from_dict(config)
         vector_set_state.register(vconfig)
@@ -102,8 +120,8 @@ def create_vector_set(config: Dict[str, Any]) -> VectorSetConfig:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unhandled error: {str(e)}")
 
-@api.post("/app/create")
-def create_app(config: Dict[str, Any]) -> AppConfig:
+@api.post("/app/register")
+def register_app(config: Dict[str, Any]) -> AppConfig:
     try:
         aconfig: AppConfig = AppConfig.from_dict(config)
         app_state.register(aconfig)
@@ -113,23 +131,3 @@ def create_app(config: Dict[str, Any]) -> AppConfig:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unhandled error: {str(e)}")
     
-
-@api.get("/api/{dataset}/channel", response_model=List[str])
-def get_channels(dataset: str):
-    """
-    Input: id of the dataset
-    Output: list of channel names, e.g., ["abstract", "content"]
-    """
-    try:
-        config = dataset_state.get_config(dataset)
-        return [ch.name for ch in config.channels]
-    except KeyError:
-        raise HTTPException(status_code=404, detail="Dataset not found")
-
-
-@api.get("/datasets", response_model=List[DatasetConfig])
-def get_all_datasets():
-    """
-    Returns a list of all datasets.
-    """
-    return dataset_state.get_all_configs()

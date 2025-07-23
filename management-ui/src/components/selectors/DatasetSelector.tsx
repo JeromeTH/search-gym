@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { DatasetConfig } from "../../types/app";
-import { getDatasets } from "../../lib/api";
+import { getAllDatasets } from "../../lib/api";
 
 interface DatasetSelectorProps {
   value: string;
@@ -14,7 +14,7 @@ export default function DatasetSelector({ value, onChange }: DatasetSelectorProp
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    getDatasets()
+    getAllDatasets()
       .then((data) => {
         setDatasets(data);
         setError(null);
