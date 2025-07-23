@@ -23,7 +23,6 @@
     flex-shrink: 0;
     box-sizing: border-box;
     border-right: 1px solid #ddd;
-    background-color: #f4f4f4;
     /* Remove fixed width */
     width: auto;
   }
