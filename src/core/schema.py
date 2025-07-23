@@ -2,44 +2,15 @@ from typing import List, Optional, Union, Literal
 from src.core.interface import StoredConfig
 from pydantic import BaseModel, model_validator, ConfigDict
 from enum import Enum
-from pymilvus import DataType
 from typing import Any, Dict, Type, Self
-from src.core.util import deterministic_get_id
+from src.core.util import get_uid
 import json
 from datetime import datetime
 
 class StaticBaseModel(BaseModel): 
     model_config = ConfigDict(frozen=True)
-
-class EntryType(str, Enum):
-    STRING = "str"
-    INTEGER = "int"
-    FLOAT = "float"
-    BOOLEAN = "bool"
-
-    def default_value(self):
-        return {
-            "str": "",
-            "int": 0,
-            "float": 0.0,
-            "bool": False
-        }[self.value]
-
-    def to_python_type(self):
-        return {
-            "str": str,
-            "int": int,
-            "float": float,
-            "bool": bool
-        }[self.value]
-
-    def to_milvus_type(self):
-        return {
-            "str": DataType.VARCHAR,
-            "int": DataType.INT64,
-            "float": DataType.FLOAT,
-            "bool": DataType.BOOL
-        }[self.value]
+    
+EntryType = Literal["str", "int", "float", "bool"]
 
 class EntryMeta(StaticBaseModel):
     """
@@ -110,11 +81,7 @@ class DatasetConfig(StoredConfig):
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "DatasetConfig":
-        if "id" not in data:
-            # Remove unstable fields like `created_by`
-            stable_data = {k: v for k, v in data.items() if k != "created_by"}
-            stable_str = json.dumps(stable_data, sort_keys=True)
-            data["id"] = deterministic_get_id(stable_str)
+        if "id" not in data: data['id'] = get_uid(8)
         return cls(**data)
 
 # ---------------- Router and Reranker ----------------
@@ -166,18 +133,9 @@ class VectorSetConfig(StoredConfig):
         Assumes:
         - `dataset` is already a DatasetConfig.
         - All fields are valid.
-        - `id` is deterministically generated from core fields.
+        - if `id` is not provided, so it will be generated.
         """
-
-        if "id" not in data:
-            key_data = {
-                "root": data["root"],
-                "channel": data["channel"],
-                "chunker": data["chunker"],
-                "embedder": data["embedder"],
-                "dataset_id": data["dataset"].id,
-            }
-            data["id"] = deterministic_get_id(str(key_data))
+        if "id" not in data: data["id"] = get_uid(8)
         return cls(**data)
 
 # ---------------- Search Engine Configs ----------------
@@ -276,16 +234,7 @@ class AppConfig(StoredConfig):
         All nested objects (e.g., vector set, search engine, etc.) should already be valid dicts.
         Requires: All nested search engine configs are already pydantic models. 
         """
-        if "id" not in data:
-            # Create a deterministic ID from name + search_engines + router + reranker (exclude timestamps)
-            id_source = {
-                "name": data["name"],
-                "search_engines": data["search_engines"],
-                "router": data["router"],
-                "reranker": data["reranker"],
-            }
-            data["id"] = deterministic_get_id(str(id_source))
-
+        if "id": data["id"] = get_uid(8)
         # Inject timestamps if not provided
         now_str = datetime.now().isoformat()
         data.setdefault("created_at", now_str)

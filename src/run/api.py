@@ -125,3 +125,11 @@ def get_channels(dataset: str):
         return [ch.name for ch in config.channels]
     except KeyError:
         raise HTTPException(status_code=404, detail="Dataset not found")
+
+
+@api.get("/datasets", response_model=List[DatasetConfig])
+def get_all_datasets():
+    """
+    Returns a list of all datasets.
+    """
+    return dataset_state.get_all_configs()

@@ -23,7 +23,7 @@ export interface Filter {
 // ------------------ Dataset ------------------
 
 export interface DatasetConfig {
-  id?: string; // auto-generated if not provided
+  id?: string; 
   root: string;
   name: string;
   description?: string;

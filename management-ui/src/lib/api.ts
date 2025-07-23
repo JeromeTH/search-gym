@@ -15,6 +15,15 @@ export async function getDefaultDataset(): Promise<DatasetConfig> {
   }
 }
 
+export async function getAllDatasets(): Promise<DatasetConfig[]> {
+  const res = await fetch(`${BASE_URL}/datasets`);
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Failed to fetch datasets: ${res.status} ${errText}`);
+  }
+  return await res.json();
+}
+
 export async function createObject<T>(endpoint: string, config: T): Promise<T> {
   const res = await fetch(`${BASE_URL}/${endpoint}/create`, {
     method: "POST",

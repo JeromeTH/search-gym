@@ -1,6 +1,6 @@
 from typing import List, Any, Optional
 import hashlib
-
+import uuid
 
 def deterministic_get_id(key: str) -> str:
     """
@@ -8,6 +8,12 @@ def deterministic_get_id(key: str) -> str:
     Returns the first 10 characters of the SHA1 hex digest.
     """
     return hashlib.sha1(key.encode("utf-8")).hexdigest()[:10]
+
+def get_uid(l: int) -> str:
+    """
+    Returns a random UUID string.
+    """
+    return str(uuid.uuid4())[:l]
 
 def get(lst: List[Any], index: int) -> Optional[Any]:
     """

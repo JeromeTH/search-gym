@@ -20,6 +20,7 @@ import yaml
 import logging
 from scipy.sparse import csr_array, vstack
 from src.core.util import coalesce
+from src.utils.typing import to_milvus_type
 from abc import ABC, abstractmethod
 
 logger = logging.getLogger('taihu')
@@ -150,7 +151,7 @@ class BaseMilvus(ABC):
                 entry = dataset.get_entry(f.name)
                 fields.append(FieldConfig(
                     name=entry.name,
-                    dtype=entry.type.to_milvus_type(),
+                    dtype=to_milvus_type(entry.type),
                     max_length=entry.max_length
                 ))
         return fields

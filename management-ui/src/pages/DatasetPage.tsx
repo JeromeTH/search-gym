@@ -3,15 +3,20 @@ import CreateNewButton from "../components/basic/CreateNewButton";
 import type { DatasetConfig } from "../types/app";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { getAllDatasets } from "../lib/api";
+
 
 
 export default function DatasetPage() {
   const [datasets, setDatasets] = useState<DatasetConfig[]>([]);
 
   useEffect(() => {
-    fetch("/api/datasets") // Replace with real endpoint
-      .then(res => res.json())
-      .then(setDatasets);
+    getAllDatasets()
+      .then(setDatasets)
+      .catch((err) => {
+        console.error("Failed to load datasets:", err);
+        setDatasets([]);
+      });
   }, []);
 
   const navigate = useNavigate();

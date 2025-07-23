@@ -1,6 +1,6 @@
 # CORVAX
 
-> **C**onfigurable **O**rchestrated **R**etrieval with **VA**riables and e**X**ecutors
+**C**onfigurable **O**rchestrated **R**etrieval with **VA**riables and e**X**ecutors
 
 CORVAX is the canonical, fully modular RAG system authored by **Jerome Tze-Hou Hsu** and originally developed during his research at National Central University. It is now released under a dual-license model for research use and commercial deployment.
 
@@ -22,8 +22,51 @@ All further development and licensing of CORVAX occur under this repository.
 - UI-based app and benchmark creation
 - Evaluation pipeline connecting queries to feedback datasets
 
+Here is the complete **`Getting Started`** section as a standalone Markdown block you can drop directly into your `README.md`:
+
 ## 🚀 Getting Started
-...
+
+Make sure you have **Python 3.12.9** and **Node.js ≥ 18** installed.
+
+---
+
+### 1. 📦 Set Up Python Backend Environment
+
+```bash
+# Create and activate virtual environment
+python -m venv venv
+source venv/bin/activate
+
+# Install Python dependencies
+pip install -r requirements.txt
+````
+
+---
+
+### 2. 🧪 Start the Backend API
+
+From the **project root**, run:
+
+```bash
+uvicorn src.run.api:api --host 0.0.0.0 --port 8001 --reload
+```
+
+Backend will be live at:
+→ `http://localhost:8001`
+
+---
+
+### 3. 🖼️ Start the Frontend UI
+
+```bash
+cd management-ui/
+npm install
+npm run dev
+```
+
+Frontend will be live at:
+→ `http://localhost:5173`
+
 
 ## License
 

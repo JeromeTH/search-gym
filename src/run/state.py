@@ -36,6 +36,15 @@ class BaseState(Generic[T, S]):
 
     def get_config(self, id: str) -> T:
         return self._configs[id]
+    
+
+    def get_all_configs(self) -> List[T]:
+        return list(self._configs.values())
+    
+    def get_active_configs(self) -> List[T]:
+        #return the configs of active objects
+        assert all(id in self._configs.keys() for id in self._objs.keys()), "All active objects must have a corresponding config"
+        return [self._configs[id] for id in self._objs.keys()]
 
     def register(self, config: T):
         self._configs[config.id] = config

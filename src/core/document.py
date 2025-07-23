@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datasets import load_dataset
 from src.core.schema import Entry, EntryType, DatasetConfig, EntryMeta
 from src.core.util import ensure
+from src.utils.typing import to_python_type
 from abc import ABC, abstractmethod
 
 # --- Abstract document interface ---
@@ -56,7 +57,7 @@ class BaseDocument(BaseModel, Document):
             meta.name: 
             Entry(
                 meta = meta, 
-                contents = [meta.type.to_python_type() 
+                contents = [to_python_type(meta.type) 
                  (ensure(s, meta.max_length)) 
                  for s in self.data[meta.name]]
                 )
