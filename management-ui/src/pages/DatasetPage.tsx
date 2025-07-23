@@ -1,4 +1,5 @@
 import BaseCard from "../components/cards/BaseCard";
+import DatasetCard from "../components/cards/DatasetCard";
 import CreateNewButton from "../components/basic/CreateNewButton";
 import type { DatasetConfig } from "../types/app";
 import { useState, useEffect } from "react";
@@ -18,28 +19,15 @@ export default function DatasetPage() {
       });
   }, []);
 
-  const handleCreateNew = () => navigate("/datasets/new");
-
-  const handleCardClick = (id: string) => {
-    navigate(`/datasets/${id}`);
-  };
-
   return (
     <div>
       <div className="page-header">
         <h1>Datasets</h1>
-        <CreateNewButton onClick={handleCreateNew} />
+        <CreateNewButton onClick={() => navigate("/datasets/new")} />
       </div>
-      <div className="card-grid">
+      <div className="grid-standard">
         {datasets.map((ds) => (
-          <div key={ds.id ?? ds.name} onClick={() => handleCardClick(ds.id!)} style={{ cursor: "pointer" }}>
-            <BaseCard title={ds.name} description={ds.description}>
-              <p><strong>ID:</strong> {ds.id}</p>
-              <p><strong>Format:</strong> {ds.format}</p>
-              <p><strong>Fields:</strong> {ds.metadata.length}</p>
-              <p><strong>Channels:</strong> {ds.channels.length}</p>
-            </BaseCard>
-          </div>
+            <DatasetCard dataset={ds} onClick={() => navigate(`/datasets/${ds.id}`)}/>
         ))}
       </div>
     </div>

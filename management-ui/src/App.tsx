@@ -8,7 +8,8 @@ import VectorSetPage from "./pages/VectorSetPage";
 import DatasetForm from "./components/creation/DatasetForm";
 import VectorSetForm from "./components/creation/VectorSetForm";
 import AppForm from "./components/creation/AppForm";
-import DatasetUpdate from "./components/update/DatasetUpdate";
+import DatasetView from "./components/view/DatasetView";
+import VectorSetView from "./components/view/VectorSetView";
 
 import { register } from "./lib/api";
 import { useNavigateAfter } from "./lib/navigation";
@@ -21,11 +22,10 @@ function AppRoutes() {
       <Route path="/apps" element={<Apps />} />
       <Route path="/datasets" element={<DatasetPage />} />
       <Route path="/vector-sets" element={<VectorSetPage />} />
-      <Route path="/datasets/:id" element={<DatasetUpdate onSubmit={
-        useNavigateAfter((config) => register("dataset", config), "/datasets")
-      } />
-      }
-      />
+      <Route path="/datasets/:id" element={<DatasetView />}/>
+      <Route path="/vector-sets/:id" element={<VectorSetView />} />
+
+      {/* Catch-all for unknown routes */}
 
       {/* Form pages */}
       <Route path="/datasets/new" element={

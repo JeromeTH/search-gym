@@ -1,5 +1,10 @@
 import type {
   DatasetConfig,
+  ChunkerConfig, 
+  ChunkerType,
+  EmbedderType, 
+  EmbedderConfig, 
+  VectorSetConfig
 } from "../types/app";
 
 const BASE_URL = "http://0.0.0.0:8001";
@@ -33,6 +38,24 @@ export async function getDataset(id: string): Promise<DatasetConfig> {
   return await res.json();
 }
 
+export async function getAllVectorSets(): Promise<VectorSetConfig[]> {
+  const res = await fetch(`${BASE_URL}/vector_sets`);
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Failed to fetch vector sets: ${res.status} ${errText}`);
+  }
+  return await res.json();
+}
+
+export async function getVectorSet(id: string): Promise<VectorSetConfig> {
+  const res = await fetch(`${BASE_URL}/vector_sets/${id}`);
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Failed to fetch vector set: ${res.status} ${errText}`);
+  }
+  return await res.json();
+}
+
 export async function register<T>(endpoint: string, config: T): Promise<T> {
   const res = await fetch(`${BASE_URL}/${endpoint}/register`, {
     method: "POST",
@@ -47,15 +70,14 @@ export async function register<T>(endpoint: string, config: T): Promise<T> {
   return await res.json();
 }
 
-// src/lib/api.ts
-export async function getDefaultChunkers() {
-  const res = await fetch("/defaults/chunker");
-  if (!res.ok) throw new Error("Failed to fetch chunker defaults");
-  return res.json(); // { length_chunker: ..., sentence_chunker: ... }
+export async function getDefaultChunker(type: ChunkerType): Promise<ChunkerConfig> {
+  const res = await fetch(`${BASE_URL}/defaults/chunker/${type}`);
+  if (!res.ok) throw new Error(`Failed to fetch default config for chunker: ${type}`);
+  return await res.json(); // Returns a valid ChunkerConfig
 }
 
-export async function getDefaultEmbedders() {
-  const res = await fetch("/defaults/embedder");
+export async function getDefaultEmbedder(type: EmbedderType): Promise<EmbedderConfig> {
+  const res = await fetch(`${BASE_URL}/defaults/embedder/${type}`);
   if (!res.ok) throw new Error("Failed to fetch embedder defaults");
-  return res.json(); // { auto_model: ..., bge: ... }
+  return res.json(); // EmbedderConfig
 }

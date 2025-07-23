@@ -1,5 +1,5 @@
 .base-card {
-    border: 1px solid #ddd;
+    border: 2px solid #ddd;
     border-radius: 12px;
     padding: 16px;
     background: white;
@@ -13,4 +13,9 @@
     font-size: 0.9rem;
     color: #555;
   }
+  .base-card.selected {
+    border: 2px solid #007bff;
+    box-shadow: 0 0 6px rgba(0, 123, 255, 0.4);
+  }
+  
   

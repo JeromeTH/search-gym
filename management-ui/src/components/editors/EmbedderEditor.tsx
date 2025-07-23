@@ -1,23 +1,45 @@
+// src/components/editors/EmbedderEditor.tsx
 import { useEffect, useState } from "react";
-import type { EmbedderConfig } from "../../types/app";
-import { getDefaultEmbedders } from "../../lib/api";
+import type { EmbedderConfig, EmbedderType } from "../../types/app";
+import { EmbedderTypeValues } from "../../types/app";
+import { getDefaultEmbedder } from "../../lib/api";
 
 interface Props {
-  config: EmbedderConfig | null;
-  onChange: (c: EmbedderConfig) => void;
+  onChange: (config: EmbedderConfig) => void;
 }
 
-export default function EmbedderEditor({ config, onChange }: Props) {
-  const [defaults, setDefaults] = useState<{ [key: string]: EmbedderConfig }>({});
+export default function EmbedderEditor({ onChange }: Props) {
+  const [config, setConfig] = useState<EmbedderConfig | null>(null);
 
-  useEffect(() => {
-    getDefaultEmbedders().then(setDefaults).catch(console.error);
-  }, []);
+  const handleTypeChange = (type: EmbedderType) => {
+    getDefaultEmbedder(type)
+      .then((defaultCfg) => {
+        setConfig(defaultCfg);
+        onChange(defaultCfg);
+      })
+      .catch(console.error);
+  };
 
-  const handleTypeChange = (type: string) => {
-    if (defaults[type]) {
-      onChange(defaults[type]);
-    }
+  const handleFieldChange = (key: string, value: string) => {
+    if (!config) return;
+    const updated = { ...config, [key]: value } as EmbedderConfig;
+    setConfig(updated);
+    onChange(updated);
+  };
+
+  const renderField = (key: string, value: string) => {
+    if (key === "type") return null;
+
+    return (
+      <div key={key}>
+        <label>{key}</label>
+        <input
+          type="text"
+          value={value}
+          onChange={(e) => handleFieldChange(key, e.target.value)}
+        />
+      </div>
+    );
   };
 
   return (
@@ -25,23 +47,22 @@ export default function EmbedderEditor({ config, onChange }: Props) {
       <h3>Embedder</h3>
       <select
         value={config?.type ?? ""}
-        onChange={(e) => handleTypeChange(e.target.value)}
+        onChange={(e) => handleTypeChange(e.target.value as EmbedderType)}
       >
         <option value="">-- Select --</option>
-        {Object.keys(defaults).map((t) => (
-          <option key={t} value={t}>{t}</option>
+        {EmbedderTypeValues.map((type) => (
+          <option key={type} value={type}>
+            {type}
+          </option>
         ))}
       </select>
+
       {config && (
-        <>
-          <label>Model Name</label>
-          <input
-            value={config.model_name}
-            onChange={(e) =>
-              onChange({ ...config, model_name: e.target.value })
-            }
-          />
-        </>
+        <div style={{ marginTop: "1rem" }}>
+          {Object.entries(config).map(([key, value]) =>
+            renderField(key, value)
+          )}
+        </div>
       )}
     </div>
   );

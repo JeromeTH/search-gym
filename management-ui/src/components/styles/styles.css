@@ -1,0 +1,7 @@
+.scrollable-card-container {
+    display: flex;
+    overflow-x: auto;
+    gap: 12px;
+    padding-bottom: 12px;
+    margin: 12px 0;
+}  

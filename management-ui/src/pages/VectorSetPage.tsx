@@ -1,38 +1,41 @@
 import BaseCard from "../components/cards/BaseCard";
+import VectorSetCard from "../components/cards/VectorSetCard";
 import CreateNewButton from "../components/basic/CreateNewButton";
 import type { VectorSetConfig } from "../types/app";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
+import { getAllVectorSets } from "../lib/api";
 
 
 export default function VectorSetPage() {
   const [vectorSets, setVectorSets] = useState<VectorSetConfig[]>([]);
 
   useEffect(() => {
-    fetch("/api/vector_sets") // Replace with real endpoint
-      .then(res => res.json())
-      .then(setVectorSets);
+    getAllVectorSets()
+      .then(setVectorSets) 
+      .catch((err) => {
+        console.error("Failed to load datasets:", err);
+        setVectorSets([]);
+      });
   }, []);
 
   const navigate = useNavigate();
-  const handleCreateNew = () => navigate("/vector-sets/new");
 
   return (
     <div>
       <div className="page-header">
         <h1>Vector Sets</h1>
-        <CreateNewButton onClick={handleCreateNew} />
+        <CreateNewButton onClick={() => navigate("/vector-sets/new")} />
       </div>
       <div className="card-grid">
-        {vectorSets.map((vs, i) => (
-          <BaseCard
-            key={i}
-            title={`${vs.dataset.name} - ${vs.channel}`}
-            description={`${vs.embedder.type} + ${vs.chunker.type}`}
-          >
-            <p><strong>Embedder:</strong> {vs.embedder.model_name}</p>
-            <p><strong>Chunker:</strong> {vs.chunker.type}</p>
-          </BaseCard>
+         {/* {datasets.map((ds) => (
+                    <DatasetCard dataset={ds} onClick={() => handleCardClick(ds.id!)}/>
+                ))} */}
+        {vectorSets.map((vs) => (
+          <VectorSetCard
+            vectorSet={vs}
+            onClick={() => navigate(`/vector-sets/${vs.id}`)}
+          />
         ))}
       </div>
     </div>

@@ -1,15 +1,13 @@
+// src/pages/DatasetView.tsx
+
 import { useEffect, useState } from "react";
 import { useParams } from "react-router-dom";
 import type { DatasetConfig } from "../../types/app";
 import { getDataset } from "../../lib/api";
-import DatasetEditor from "../editors/DatasetEditor";
 import ErrorPopup from "../basic/ErrorPopup";
+import DatasetViewer from "../viewers/DatasetViewer"; // The read-only viewer
 
-interface DatasetUpdateProps {
-  onSubmit: (config: DatasetConfig) => void;
-}
-
-export default function DatasetUpdate({ onSubmit }: DatasetUpdateProps) {
+export default function DatasetView() {
   const { id } = useParams(); // from route /datasets/:id
   const [dataset, setDataset] = useState<DatasetConfig | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -38,8 +36,8 @@ export default function DatasetUpdate({ onSubmit }: DatasetUpdateProps) {
 
   return (
     <div>
-      <h2>Update Dataset</h2>
-      <DatasetEditor defaultValue={dataset} onSubmit={onSubmit} />
+      <h2>Dataset Details</h2>
+      <DatasetViewer config={dataset} />
     </div>
   );
 }
