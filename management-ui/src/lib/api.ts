@@ -7,6 +7,7 @@ import type {
   VectorSetConfig, 
   AppConfig,
 } from "../types/app";
+import type { Status } from "../types/ui";
 
 const BASE_URL = "http://0.0.0.0:8001";
 
@@ -66,13 +67,36 @@ export async function getAllApps(): Promise<AppConfig[]> {
   return await res.json();
 }
 
-export async function getApp(name: string): Promise<AppConfig> {
-  const res = await fetch(`${BASE_URL}/apps/${name}`);
+export async function getApp(id: string): Promise<AppConfig> {
+  const res = await fetch(`${BASE_URL}/apps/${id}`);
   if (!res.ok) {
     const errText = await res.text();
     throw new Error(`Failed to fetch app: ${res.status} ${errText}`);
   }
   return await res.json();
+}
+
+export async function activateApp(id: string): Promise<void> {
+  const res = await fetch(`${BASE_URL}/apps/${id}/activate`, {
+    method: "POST",
+  });
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Failed to activate app: ${res.status} ${errText}`);
+  }
+}
+
+export async function getAppStatus(id: string) : Promise<Status> {
+  const res = await fetch(`${BASE_URL}/apps/${id}/status`);
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Failed to fetch app status: ${res.status} ${errText}`);
+  }
+  const status: Status = await res.json();
+  if (status !== "inactive" && status !== "active" && status !== "activating") {
+    throw new Error(`Invalid status received: ${status}`);
+  }
+  return status;
 }
 
 export async function register<T>(endpoint: string, config: T): Promise<T> {

@@ -1,6 +1,7 @@
 from typing import TypeVar, Generic, Dict, Type, List
 from src.core.interface import StoredObj, StoredConfig
 from pydantic import BaseModel, ValidationError
+from src.core.schema import Status
 import os, yaml
 
 T = TypeVar('T', bound=StoredConfig)
@@ -45,6 +46,14 @@ class BaseState(Generic[T, S]):
         #return the configs of active objects
         assert all(id in self._configs.keys() for id in self._objs.keys()), "All active objects must have a corresponding config"
         return [self._configs[id] for id in self._objs.keys()]
+    
+    def get_status(self, id: str) -> Status: 
+        if id in self._objs:
+            return Status.ACTIVE
+        elif id in self._configs:
+            return Status.INACTIVE
+        else:
+            return Status.ACTIVATING
 
     def register(self, config: T):
         self._configs[config.id] = config

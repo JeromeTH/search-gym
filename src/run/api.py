@@ -161,7 +161,33 @@ def get_app(id: str):
     except KeyError:
         raise HTTPException(status_code=404, detail="App not found")
 
+@api.get("/apps/{id}/status")
+def get_app_status(id: str):
+    """
+    Returns the status of a specific app by its ID.
+    """
+    if not app_state.has(id):
+        raise HTTPException(status_code=404, detail="App not found")
+    try:
+        status = app_state.get_status(id)
+        return {"status": status}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to get app status: {str(e)}")
 
+@api.post("/app/{id}/activate")
+def activate_app(id: str):
+    """
+    Activates an app by its ID.
+    """
+    if not app_state.has(id):
+        raise HTTPException(status_code=404, detail="App not found")
+    
+    try:
+        app_state.activate(id)
+        return {"message": f"App {id} activated successfully"}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to activate app: {str(e)}")
+    
 @api.post("/app/register")
 def register_app(config: Dict[str, Any]) -> AppConfig:
     try:

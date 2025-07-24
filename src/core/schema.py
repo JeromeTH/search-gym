@@ -7,6 +7,11 @@ from src.core.util import get_uid
 import json
 from datetime import datetime
 
+class Status(Enum):
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    ACTIVATING = "activating"
+
 class StaticBaseModel(BaseModel): 
     model_config = ConfigDict(frozen=True)
     
