@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { DatasetConfig } from "../../types/app";
 import { getDefaultDataset } from "../../lib/api";
-import DatasetEditor from "../editors/DatasetEditor";
+import DatasetEditor from "../editors/dataset/DatasetEditor";
 import ErrorPopup from "../basic/ErrorPopup";
 
 interface DatasetFormProps {

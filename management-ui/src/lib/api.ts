@@ -4,7 +4,8 @@ import type {
   ChunkerType,
   EmbedderType, 
   EmbedderConfig, 
-  VectorSetConfig
+  VectorSetConfig, 
+  AppConfig,
 } from "../types/app";
 
 const BASE_URL = "http://0.0.0.0:8001";
@@ -52,6 +53,24 @@ export async function getVectorSet(id: string): Promise<VectorSetConfig> {
   if (!res.ok) {
     const errText = await res.text();
     throw new Error(`Failed to fetch vector set: ${res.status} ${errText}`);
+  }
+  return await res.json();
+}
+
+export async function getAllApps(): Promise<AppConfig[]> {
+  const res = await fetch(`${BASE_URL}/apps`);
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Failed to fetch apps: ${res.status} ${errText}`);
+  } 
+  return await res.json();
+}
+
+export async function getApp(name: string): Promise<AppConfig> {
+  const res = await fetch(`${BASE_URL}/apps/${name}`);
+  if (!res.ok) {
+    const errText = await res.text();
+    throw new Error(`Failed to fetch app: ${res.status} ${errText}`);
   }
   return await res.json();
 }

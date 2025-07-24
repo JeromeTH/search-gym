@@ -86,11 +86,20 @@ class DatasetConfig(StoredConfig):
 
 # ---------------- Router and Reranker ----------------
 
-class RouterConfig(StaticBaseModel):
+class SimpleRouterConfig(StaticBaseModel):
     type: Literal["simple"]
 
-class RerankerConfig(StaticBaseModel):
-    type: Literal["identity", "auto_model"]
+RouterConfig = Union[SimpleRouterConfig]
+
+# ---------------- Reranker ----------------
+class IdentityRerankerConfig(StaticBaseModel):
+    type: Literal["identity"]
+
+class AutoModelRerankerConfig(StaticBaseModel):
+    type: Literal["auto_model"]
+    model_name: str
+
+RerankerConfig = Union[IdentityRerankerConfig, AutoModelRerankerConfig]
 
 # ---------------- Embedder ----------------
 

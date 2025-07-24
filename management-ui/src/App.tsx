@@ -10,6 +10,7 @@ import VectorSetForm from "./components/creation/VectorSetForm";
 import AppForm from "./components/creation/AppForm";
 import DatasetView from "./components/view/DatasetView";
 import VectorSetView from "./components/view/VectorSetView";
+import AppView from "./components/view/AppView";
 
 import { register } from "./lib/api";
 import { useNavigateAfter } from "./lib/navigation";
@@ -24,6 +25,7 @@ function AppRoutes() {
       <Route path="/vector-sets" element={<VectorSetPage />} />
       <Route path="/datasets/:id" element={<DatasetView />}/>
       <Route path="/vector-sets/:id" element={<VectorSetView />} />
+      <Route path="/apps/:id" element={<AppView />} />
 
       {/* Catch-all for unknown routes */}
 

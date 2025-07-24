@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { EntryMeta, EntryType } from "../../types/app";
-import { EntryValues } from "../../types/app"; // Use the constant values
+import type { EntryMeta, EntryType } from "../../../types/app";
+import { EntryValues } from "../../../types/app"; // Use the constant values
 
 interface Props {
   entries: EntryMeta[];

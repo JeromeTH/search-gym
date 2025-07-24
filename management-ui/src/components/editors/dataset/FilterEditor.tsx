@@ -1,6 +1,6 @@
 import { useState } from "react";
-import type { Filter, FilterType } from "../../types/app";
-import { FilterTypeValues } from "../../types/app";
+import type { Filter, FilterType } from "../../../types/app";
+import { FilterTypeValues } from "../../../types/app";
 
 interface Props {
   filters: Filter[];

@@ -1,38 +1,35 @@
-import BaseCard from "../components/cards/BaseCard";
+import AppCard from "../components/cards/AppCard";
 import CreateNewButton from "../components/basic/CreateNewButton";
 import type { AppConfig } from "../types/app";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-
+import { getAllApps } from "../lib/api";
 
 export default function AppPage() {
   const [apps, setApps] = useState<AppConfig[]>([]);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    fetch("/api/apps") // Replace with real endpoint
-      .then(res => res.json())
-      .then(setApps);
+    getAllApps()
+      .then(setApps)
+      .catch((err) => {
+        console.error("Failed to load apps:", err);
+        setApps([]);
+      });
   }, []);
-  const navigate = useNavigate();
-  const handleCreateNew = () => navigate("/apps/new");
 
   return (
     <div>
       <div className="page-header">
         <h1>Apps</h1>
-        <CreateNewButton onClick={handleCreateNew} />
+        <CreateNewButton onClick={() => navigate("/apps/new")} />
       </div>
       <div className="card-grid">
-        {apps.map(app => (
-          <BaseCard
-            key={app.name}
-            title={app.name}
-            description={app.description}
-          >
-            <p><strong>Engines:</strong> {app.search_engines.map(e => e.type).join(", ")}</p>
-            <p><strong>Router:</strong> {app.router.type}</p>
-            <p><strong>Reranker:</strong> {app.reranker.type}</p>
-          </BaseCard>
+        {apps.map((app) => (
+          <AppCard
+            app={app}
+            onClick={() => navigate(`/apps/${app.id!}`)}
+          />
         ))}
       </div>
     </div>

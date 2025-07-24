@@ -1,73 +1,109 @@
-import { useEffect, useState } from "react";
-import type { AppConfig, VectorSetConfig, RouterConfig, RerankerConfig } from "../../types/app";
-import VectorSetForm from "./VectorSetForm";
+// src/components/forms/AppForm.tsx
+import { useState } from "react";
+import type {
+  AppConfig,
+  SearchEngineConfig,
+  SearchEngineType,
+  RouterConfig,
+  RouterType,
+  RerankerConfig,
+  RerankerType,
+} from "../../types/app";
+import { SearchEngineTypeValues, RouterTypeValues, RerankerTypeValues } from "../../types/app";
+import MilvusEditor from "../editors/engine/MilvusEditor";
+import ElasticEditor from "../editors/engine/ElasticEditor";
+import HybridMilvusEditor from "../editors/engine/HybridMilvusEditor";
+import SimpleRouterEditor from "../editors/router/SimpleRouterEditor";
+import IdentityRerankerEditor from "../editors/reranker/IdentityRerankerEditor";
 
 interface AppFormProps {
   onSubmit: (config: AppConfig) => void;
 }
 
 export default function AppForm({ onSubmit }: AppFormProps) {
-  const [vectorSets, setVectorSets] = useState<VectorSetConfig[]>([]);
-  const [selectedVectorSet, setSelectedVectorSet] = useState<VectorSetConfig | null>(null);
-  const [creatingVectorSet, setCreatingVectorSet] = useState(false);
-
-  const [router, setRouter] = useState<RouterConfig>({ type: "simple" });
-  const [reranker, setReranker] = useState<RerankerConfig>({ type: "identity" });
+  const [selectedEngines, setSelectedEngines] = useState<SearchEngineConfig[]>([]);
+  const [selectedType, setSelectedType] = useState<SearchEngineType | "">("");
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
 
-  useEffect(() => {
-    fetch("/api/vector_sets").then(res => res.json()).then(setVectorSets);
-  }, []);
+  const [routerType, setRouterType] = useState<RouterType | "">("");
+  const [router, setRouter] = useState<RouterConfig | null>(null);
+
+  const [rerankerType, setRerankerType] = useState<RerankerType | "">("");
+  const [reranker, setReranker] = useState<RerankerConfig | null>(null);
+
+  const addEngine = (engine: SearchEngineConfig) => {
+    setSelectedEngines((prev) => [...prev, engine]);
+    setSelectedType("");
+  };
 
   const handleSubmit = () => {
-    if (!selectedVectorSet) return;
+    if (!name || !router || !reranker || selectedEngines.length === 0) return;
     onSubmit({
       name,
       description,
-      search_engines: [{ type: "milvus", vector_set: selectedVectorSet }],
+      search_engines: selectedEngines,
       router,
       reranker,
     });
   };
 
   return (
-    <div>
+    <div className="form-container">
       <h2>Create App</h2>
-      <input placeholder="App Name" value={name} onChange={(e) => setName(e.target.value)} />
-      <textarea placeholder="Description" value={description} onChange={(e) => setDescription(e.target.value)} />
 
-      {creatingVectorSet ? (
-        <VectorSetForm onSubmit={(vs) => {
-          setSelectedVectorSet(vs);
-          setCreatingVectorSet(false);
-          setVectorSets((prev) => [...prev, vs]);
-        }} />
-      ) : (
-        <>
-          <label>Select Vector Set</label>
-          <select value={selectedVectorSet?.channel ?? ""} onChange={(e) => {
-            const selected = vectorSets.find(vs => vs.channel === e.target.value);
-            setSelectedVectorSet(selected ?? null);
-          }}>
-            <option value="">-- Select --</option>
-            {vectorSets.map(vs => (
-              <option key={vs.channel} value={vs.channel}>
-                {vs.dataset.name} - {vs.channel}
-              </option>
-            ))}
-          </select>
-          <button onClick={() => setCreatingVectorSet(true)}>+ Create New Vector Set</button>
-        </>
-      )}
+      <input
+        placeholder="App Name"
+        value={name}
+        onChange={(e) => setName(e.target.value)}
+      />
+      <textarea
+        placeholder="Description"
+        value={description}
+        onChange={(e) => setDescription(e.target.value)}
+      />
 
-      <label>Reranker</label>
-      <select value={reranker.type} onChange={(e) => setReranker({ type: e.target.value as any })}>
-        <option value="identity">Identity</option>
-        <option value="auto_model">Auto Model</option>
+      <label>Select Search Engine Type</label>
+      <select
+        value={selectedType}
+        onChange={(e) => setSelectedType(e.target.value as SearchEngineType)}
+      >
+        <option value="">-- Select --</option>
+        {SearchEngineTypeValues.map((t) => (
+          <option key={t} value={t}>{t}</option>
+        ))}
       </select>
 
-      <button onClick={handleSubmit}>Create App</button>
+      {selectedType === "milvus" && <MilvusEditor onSubmit={addEngine} />}
+      {selectedType === "elasticsearch" && <ElasticEditor onSubmit={addEngine} />}
+      {selectedType === "hybrid_milvus" && <HybridMilvusEditor onSubmit={addEngine} />}
+
+      <label>Select Router</label>
+      <select value={routerType} onChange={(e) => setRouterType(e.target.value as RouterType)}>
+        <option value="">-- Select --</option>
+        {RouterTypeValues.map((t) => (
+          <option key={t} value={t}>{t}</option>
+        ))}
+      </select>
+
+      {routerType === "simple" && <SimpleRouterEditor onSubmit={setRouter} />}
+
+      <label>Select Reranker</label>
+      <select value={rerankerType} onChange={(e) => setRerankerType(e.target.value as RerankerType)}>
+        <option value="">-- Select --</option>
+        {RerankerTypeValues.map((t) => (
+          <option key={t} value={t}>{t}</option>
+        ))}
+      </select>
+
+      {rerankerType === "identity" && <IdentityRerankerEditor onSubmit={setReranker} />}
+
+      <button
+        onClick={handleSubmit}
+        disabled={!name || !router || !reranker || selectedEngines.length === 0}
+      >
+        Create App
+      </button>
     </div>
   );
 }

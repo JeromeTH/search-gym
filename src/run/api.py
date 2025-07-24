@@ -143,6 +143,24 @@ def register_vector_set(config: Dict[str, Any]) -> VectorSetConfig:
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Unhandled error: {str(e)}")
 
+#-------------- App -----------------
+@api.get("/apps", response_model=List[AppConfig])
+def get_all_apps():
+    """
+    Returns a list of all registered apps.
+    """
+    return app_state.get_all_configs()
+
+@api.get("/apps/{id}", response_model=AppConfig)
+def get_app(id: str):
+    """
+    Returns a specific app by its ID.
+    """
+    try:
+        return app_state.get_config(id)
+    except KeyError:
+        raise HTTPException(status_code=404, detail="App not found")
+
 
 @api.post("/app/register")
 def register_app(config: Dict[str, Any]) -> AppConfig:

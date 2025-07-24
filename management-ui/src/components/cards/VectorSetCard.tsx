@@ -1,4 +1,3 @@
-// src/components/cards/VectorSetCard.tsx
 import type { VectorSetConfig } from "../../types/app";
 import BaseCard from "./BaseCard";
 
@@ -9,7 +8,7 @@ interface VectorSetCardProps {
 }
 
 export default function VectorSetCard({ vectorSet, selected = false, onClick }: VectorSetCardProps) {
-  const { root, channel, chunker, embedder, dataset } = vectorSet;
+  const { id, root, channel, chunker, embedder, dataset } = vectorSet;
 
   return (
     <BaseCard
@@ -18,6 +17,11 @@ export default function VectorSetCard({ vectorSet, selected = false, onClick }: 
       selected={selected}
       onClick={onClick}
     >
+      {id && (
+        <p style={{ fontSize: "0.75rem", color: "#888", marginBottom: "8px" }}>
+          <strong>Vector Set ID:</strong> {id}
+        </p>
+      )}
       <p style={{ fontSize: "0.75rem", color: "#888", marginBottom: "8px" }}>
         <strong>Dataset ID:</strong> {dataset.id || "None"}
       </p>

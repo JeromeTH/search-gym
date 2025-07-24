@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
-import type { DatasetConfig, EntryMeta, Filter } from "../../types/app";
-import ErrorPopup from "../basic/ErrorPopup";
-import EntryMetaEditor from "../editors/EntryMetaEditor";
-import FilterEditor from "../editors/FilterEditor";
+import type { DatasetConfig, EntryMeta, Filter } from "../../../types/app";
+import ErrorPopup from "../../basic/ErrorPopup";
+import EntryMetaEditor from "./EntryMetaEditor";
+import FilterEditor from "./FilterEditor";
 
 interface DatasetEditorProps {
   onSubmit: (config: DatasetConfig) => void;

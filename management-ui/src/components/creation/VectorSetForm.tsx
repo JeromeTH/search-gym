@@ -1,17 +1,28 @@
+// src/components/forms/VectorSetForm.tsx
+
 import { useEffect, useState } from "react";
 import type {
   VectorSetConfig,
   DatasetConfig,
   ChunkerConfig,
   EmbedderConfig,
+  ChunkerType,
+  EmbedderType,
 } from "../../types/app";
-import { getAllDatasets } from "../../lib/api";
+import {
+  getAllDatasets,
+} from "../../lib/api";
+import {
+  ChunkerTypeValues,
+  EmbedderTypeValues,
+} from "../../types/app";
 import ChannelSelector from "../selectors/ChannelSelector";
-import ChunkerEditor from "../editors/ChunkerEditor";
-import EmbedderEditor from "../editors/EmbedderEditor";
-import BaseCard from "../cards/BaseCard";
 import DatasetCard from "../cards/DatasetCard";
-import "../styles/styles.css"
+import LengthChunkerEditor from "../editors/chunker/LengthChunkerEditor";
+import SentenceChunkerEditor from "../editors/chunker/SentenceChunkerEditor";
+import AutoModelEditor from "../editors/embedder/AutoModelEmbedderEditor";
+import BGEEditor from "../editors/embedder/BGEEmbedderEditor";
+import "../styles/styles.css";
 
 interface VectorSetFormProps {
   onSubmit: (config: VectorSetConfig) => void;
@@ -22,6 +33,10 @@ export default function VectorSetForm({ onSubmit }: VectorSetFormProps) {
   const [selectedDataset, setSelectedDataset] = useState<DatasetConfig | null>(null);
   const [channel, setChannel] = useState("");
   const [root, setRoot] = useState("");
+
+  const [chunkerType, setChunkerType] = useState<ChunkerType | "">("");
+  const [embedderType, setEmbedderType] = useState<EmbedderType | "">("");
+
   const [chunker, setChunker] = useState<ChunkerConfig | null>(null);
   const [embedder, setEmbedder] = useState<EmbedderConfig | null>(null);
 
@@ -46,7 +61,7 @@ export default function VectorSetForm({ onSubmit }: VectorSetFormProps) {
   };
 
   return (
-    <div>
+    <div className="form-container">
       <h2>Create Vector Set</h2>
 
       <div>
@@ -61,6 +76,7 @@ export default function VectorSetForm({ onSubmit }: VectorSetFormProps) {
       <div className="scrollable-card-container">
         {datasets.map((ds) => (
           <DatasetCard
+            key={ds.id}
             dataset={ds}
             selected={selectedDataset?.id === ds.id}
             onClick={() => {
@@ -82,8 +98,29 @@ export default function VectorSetForm({ onSubmit }: VectorSetFormProps) {
             value={channel}
             onChange={setChannel}
           />
-          <ChunkerEditor onChange={setChunker} />
-          <EmbedderEditor onChange={setEmbedder} />
+
+          <label>Chunker Type</label>
+          <select value={chunkerType} onChange={(e) => setChunkerType(e.target.value as ChunkerType)}>
+            <option value="">-- Select --</option>
+            {ChunkerTypeValues.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+
+          {chunkerType === "length_chunker" && <LengthChunkerEditor onChange={setChunker} />}
+          {chunkerType === "sentence_chunker" && <SentenceChunkerEditor onChange={setChunker} />}
+
+          <label>Embedder Type</label>
+          <select value={embedderType} onChange={(e) => setEmbedderType(e.target.value as EmbedderType)}>
+            <option value="">-- Select --</option>
+            {EmbedderTypeValues.map((t) => (
+              <option key={t} value={t}>{t}</option>
+            ))}
+          </select>
+
+          {embedderType === "auto_model" && <AutoModelEditor onChange={setEmbedder} />}
+          {embedderType === "bge" && <BGEEditor onChange={setEmbedder} />}
+
           <button onClick={handleSubmit}>Create Vector Set</button>
         </>
       )}
