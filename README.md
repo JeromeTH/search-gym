@@ -1,19 +1,5 @@
-# CORVAX
+# SearchGym: A Configurable Design Space Engine for Hybrid RAG systemss
 
-**C**onfigurable **O**rchestrated **R**etrieval with **VA**riables and e**X**ecutors
-
-CORVAX is the canonical, fully modular RAG system authored by **Jerome Tze-Hou Hsu** and originally developed during his research at National Central University. It is now released under a dual-license model for research use and commercial deployment.
-
-**Repo History:**  
-This code was forked from an earlier internal prototype at NCU, but the full design, architecture, and implementation are original intellectual property of Jerome Hsu.  
-All further development and licensing of CORVAX occur under this repository.
-
-## 📦 Submodules
-
-- `src/` – Core search system (vector stores, rerankers, managers, routers)
-- `frontend/` – TypeScript-based UI for creating, monitoring, and evaluating app versions and benchmarks
-- `backend/` – API server bridging frontend with Weights & Biases (Weave) for logging and feedback
-- `monitoring/` – Evaluation scripts, benchmark runners, metric logging
 
 ## 🧭 Key Features
 
@@ -22,7 +8,7 @@ All further development and licensing of CORVAX occur under this repository.
 - UI-based app and benchmark creation
 - Evaluation pipeline connecting queries to feedback datasets
 
-Here is the complete **`Getting Started`** section as a standalone Markdown block you can drop directly into your `README.md`:
+See DESIGN.md for architecture walkthrough. 
 
 ## 🚀 Getting Started
 
@@ -41,9 +27,27 @@ source venv/bin/activate
 pip install -r requirements.txt
 ````
 
+
+### 2. 🛠️ Elasticsearch Setup (Secured, Local Only)
+
+```bash
+# Step 1: Download
+wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-9.0.2-linux-x86_64.tar.gz
+
+# Step 2: Extract
+tar -xzf elasticsearch-9.0.2-linux-x86_64.tar.gz
+mv elasticsearch-9.0.2 elasticsearch
+
+# Step 3: Start
+cd elasticsearch
+bin/elasticsearch
+
+# Elasticsearch will print a password and start on https://localhost:9200
+```
+
 ---
 
-### 2. 🧪 Start the Backend API
+### 3. 🧪 Start the Backend API
 
 From the **project root**, run:
 
@@ -56,7 +60,7 @@ Backend will be live at:
 
 ---
 
-### 3. 🖼️ Start the Frontend UI
+### 4. 🖼️ Start the Frontend UI
 
 ```bash
 cd management-ui/
