@@ -202,10 +202,8 @@ class BaseMilvus(ABC):
             for doc in docs:
                 doc_id = doc.key()
                 repeat = chunk_sizes[doc_id]
-                val = coalesce(
-                    get(doc.metadata()[f.name].contents, 0),
-                    doc.metadata()[f.name].meta.type.default_value()
-                )
+                assert doc.metadata()[f.name].contents, "Document metadata is empty, cannot be indexed"
+                val = doc.metadata()[f.name].contents[0]
                 values.extend([val] * repeat)
 
             metadata_dict[f.name] = values

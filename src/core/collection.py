@@ -82,6 +82,8 @@ class CollectionBuilder:
         return CollectionConfig(**asdict(self))
 
     def connect(self):
+        #check if db directory exists
+        os.makedirs("db", exist_ok=True)
         connections.connect(uri="db/milvus.db")  # Adjust the URI as needed
 
     def get_existing(self) -> Optional[Collection]:

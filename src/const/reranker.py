@@ -1,6 +1,7 @@
-from src.core.schema import RerankerConfig
+from src.core.schema import RerankerConfig, IdentityRerankerConfig
+from typing import List
 
-RERANKERS = [
-    RerankerConfig(type="identity"),
+RERANKERS: List[RerankerConfig] = [
+    IdentityRerankerConfig(type="identity")
 ]
 

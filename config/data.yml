@@ -1,6 +1,5 @@
 arxiv: 
-  root: /home/jth264/.cache/kagglehub/datasets/Cornell-University/arxiv/versions/235/arxiv-metadata-oai-snapshot.json
-  
+  root: _data
 ncl: 
   root: /home/share/data/ncl_json_processed
 

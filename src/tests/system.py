@@ -39,7 +39,7 @@ app_state = BaseState[AppConfig, App](
 #     logger.info(f"Registering app: {app_config.name} with ID {app_config.id}")
 
 # activate 
-app_state.register(DEFAULT_APPS["ncl_milvus_simple_identity"])
+app_state.register(DEFAULT_APPS["arxiv_milvus_simple_identity"])
 registered_apps = app_state.list_ids()
 target_app_id = registered_apps[0]
 logger.info(f"Activating app: \n {app_state.get_config(target_app_id)}")
@@ -58,6 +58,7 @@ filter = {}
 search_query = "What is the capital of France?"
 start_time = time.time()
 results = app.search(query=search_query, filter=filter, limit=5)
+print(results)
 end_time = time.time()
 logger.info(f"Search completed in {end_time - start_time:.2f} seconds.")
 #app_with_id --> register --> activate --> get_obj

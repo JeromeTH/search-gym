@@ -21,6 +21,15 @@ APPS = [
     for reranker in RERANKERS
 ]
 
+ARXIV_MILVUS_SIMPLE_IDENTITY = AppConfig(
+    id="arxiv_milvus_simple_identity",
+    name="ArXiv Milvus Simple Identity",
+    description="ArXiv dataset with Milvus search engine, simple router, and identity reranker",
+    search_engines=[MilvusConfig(type="milvus", vector_set=DEFAULT_VECTOR_SETS["arxiv_dense_vs"])],
+    router=ROUTERS[0],  # Assuming the first router is the simple one
+    reranker=RERANKERS[0]  # Assuming the first reranker is the identity one
+)
+
 DEFAULT_APPS: Dict[str, AppConfig] = {
     "ncl_milvus_simple_identity": AppConfig(
         id="ncl_milvus_simple_identity",
@@ -29,5 +38,6 @@ DEFAULT_APPS: Dict[str, AppConfig] = {
         search_engines=[MilvusConfig(type="milvus", vector_set=DEFAULT_VECTOR_SETS["ncl_dense_vs"])],
         router=ROUTERS[0],  # Assuming the first router is the simple one
         reranker=RERANKERS[0]  # Assuming the first reranker is the identity one
-    )
+    ), 
+    "arxiv_milvus_simple_identity": ARXIV_MILVUS_SIMPLE_IDENTITY
 }

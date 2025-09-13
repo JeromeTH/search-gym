@@ -1,7 +1,7 @@
 from typing import List, Literal
 from src.core.schema import VectorSetConfig, SearchEngineConfig, MilvusConfig, HybridMilvusConfig, ElasticSearchConfig, DatasetConfig
 from src.const.vector_set import DENSE_VECTOR_SETS, SPARSE_VECTOR_SETS
-from src.const.dataset import NCL, LITSEARCH
+from src.const.dataset import NCL, LITSEARCH, ARXIV
 
 VECTOR_ENGINES: List[SearchEngineConfig] = [
     MilvusConfig(
@@ -28,3 +28,5 @@ STRUCTURED_ENGINES = [
         es_index=f"{dataset}_index"
     ) for dataset in [NCL, LITSEARCH]
 ]
+
+

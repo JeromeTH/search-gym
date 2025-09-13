@@ -4,6 +4,32 @@ from typing import List, Dict
 import yaml
 
 config = yaml.safe_load(open("config/data.yml", "r", encoding="utf-8"))
+ARXIV_METADATA: List[EntryMeta] = [
+    EntryMeta(name="id", type="str", max_length=20),
+    EntryMeta(name="terms", type="str", max_length=256),
+]
+
+ARXIV_CHANNELS: List[EntryMeta] = [
+    EntryMeta(name="summaries", type="str", max_length=2048),
+    EntryMeta(name="titles", type="str", max_length=512),
+]
+
+ARXIV_FILTERS: List[Filter] = [
+    Filter(name="id", filter_type="filter"),
+    Filter(name="terms", filter_type="must"),
+]
+
+ARXIV = DatasetConfig(
+    id="003",
+    name="ArXiv",
+    description="ArXiv dataset",
+    root=config["arxiv"]["root"],
+    metadata=ARXIV_METADATA,
+    channels=ARXIV_CHANNELS,
+    filters=ARXIV_FILTERS,
+    format="json",
+    created_by="Jerome"
+) 
 
 # --- Metadata fields based on NCLDocument.metadata ---
 NCL_METADATA: List[EntryMeta] = [

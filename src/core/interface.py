@@ -2,8 +2,6 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Union
 from pydantic import BaseModel, ConfigDict
 
-
-
 class StoredConfig(BaseModel):
     model_config = ConfigDict(frozen=True)
     id: str
